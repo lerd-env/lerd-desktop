@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>sh.lerd.Desktop</id>
+  <name>Lerd</name>
+  <summary>A dedicated window for the lerd dashboard</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="sh.lerd">
+    <name>Lerd</name>
+  </developer>
+  <description>
+    <p>
+      Lerd wraps the lerd local PHP development dashboard in a dedicated desktop
+      window. It connects to the lerd services running on your machine and shows
+      native desktop notifications for captured mail, worker failures, and
+      finished operations, with no browser tab to keep open.
+    </p>
+  </description>
+  <launchable type="desktop-id">sh.lerd.Desktop.desktop</launchable>
+  <url type="homepage">https://lerd.sh</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-07-19"/>
+  </releases>
+</component>

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Lerd
+Comment=Local PHP development environment
+Exec=sh.lerd.Desktop %u
+Icon=sh.lerd.Desktop
+Categories=Development;
+MimeType=x-scheme-handler/lerd;
+Terminal=false
+StartupWMClass=Lerd

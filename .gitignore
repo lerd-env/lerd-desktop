@@ -3,5 +3,6 @@ dist/
 build/
 build-dir/
 .flatpak-builder/
+repo/
 *.flatpak
 *.log

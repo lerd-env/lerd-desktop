@@ -1,0 +1,61 @@
+app-id: sh.lerd.Desktop
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '25.08'
+command: sh.lerd.Desktop
+separate-locales: false
+
+finish-args:
+  - --share=ipc
+  # Reach the lerd UI on the host loopback (127.0.0.1:7073); Flatpak network
+  # sharing uses the host netns, so 127.0.0.1 is the host.
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Native notifications the embedded dashboard may raise on the browser sink.
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: lerd-desktop
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/main
+      - cp -a main/. /app/main/
+      - install -Dm755 zypak-wrapper.sh /app/bin/sh.lerd.Desktop
+      - install -Dm644 sh.lerd.Desktop.desktop /app/share/applications/sh.lerd.Desktop.desktop
+      - install -Dm644 sh.lerd.Desktop.metainfo.xml /app/share/metainfo/sh.lerd.Desktop.metainfo.xml
+      - install -Dm644 main/assets/icon.png /app/share/icons/hicolor/512x512/apps/sh.lerd.Desktop.png
+    sources:
+      - type: dir
+        path: ../src
+        dest: main/src
+      - type: dir
+        path: ../gate
+        dest: main/gate
+      - type: dir
+        path: ../assets
+        dest: main/assets
+      - type: file
+        path: ../package.json
+        dest: main
+      - type: file
+        path: zypak-wrapper.sh
+      - type: file
+        path: sh.lerd.Desktop.desktop
+      - type: file
+        path: sh.lerd.Desktop.metainfo.xml
+      - type: archive
+        only-arches: [x86_64]
+        url: https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
+        sha256: 212d431c7c916292311c797cd91f84467c5abd6e6983cf24b162efff64cee8a9
+        dest: main/electron
+        strip-components: 0
+      - type: archive
+        only-arches: [aarch64]
+        url: https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-arm64.zip
+        sha256: e865132767e0930f5fef8ee146b9dd83c7f8fb95ed533c4de99e7057d5de5b61
+        dest: main/electron
+        strip-components: 0

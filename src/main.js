@@ -26,8 +26,12 @@ function grantDashboardPermissions() {
 app.setName('Lerd')
 
 // Claim the lerd:// scheme so clicking a native notification from the daemon
-// focuses this window at the right route.
-app.setAsDefaultProtocolClient('lerd')
+// focuses this window at the right route. Under Flatpak the manifest's desktop
+// entry already registers it, and the host tool this shells out to (xdg-settings)
+// isn't in the sandbox, so skip it there.
+if (!process.env.FLATPAK_ID) {
+  app.setAsDefaultProtocolClient('lerd')
+}
 
 let mainWindow = null
 
