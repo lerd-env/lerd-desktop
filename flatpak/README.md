@@ -26,10 +26,25 @@ scheme so native-notification clicks focus the window.
 
 ## Distribution before Flathub
 
-Host the built OSTree `repo/` and publish `lerd.flatpakref` pointing at it, so
-users install with `flatpak install --user https://lerd.sh/lerd.flatpakref`.
+`flatpak/publish.sh` builds and exports the app to a self-hosted OSTree repo,
+then (re)generates `lerd.flatpakref`:
+
+```bash
+LERD_FLATPAK_GPG_KEY=you@example.com flatpak/publish.sh
+```
+
+Upload the two outputs to your host: `repo/` to `https://lerd.sh/flatpak` and
+`lerd.flatpakref` to `https://lerd.sh/lerd.flatpakref`. Users then install with
+`flatpak install --user https://lerd.sh/lerd.flatpakref` and **update with
+`flatpak update`** (or automatically via GNOME Software / KDE Discover), since a
+`.flatpakref` adds the repo as a remote. Sign the repo (`LERD_FLATPAK_GPG_KEY`)
+for a public deployment.
+
 When the Flathub submission (a PR adding `sh.lerd.Desktop` to `flathub/flathub`)
 lands, Flathub re-hosts the identical manifest and the ref points there instead.
+
+CI (`.github/workflows/build.yml`) builds the Flatpak on every push and PR to
+catch manifest breakage.
 
 ## Updating the Electron version
 

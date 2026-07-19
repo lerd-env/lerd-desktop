@@ -1,0 +1,11 @@
+# Install: flatpak install --user https://lerd.sh/lerd.flatpakref
+# Update:  flatpak update sh.lerd.Desktop   (or automatically via a software centre)
+# flatpak/publish.sh regenerates this file and appends a GPGKey when signing.
+[Flatpak Ref]
+Name=sh.lerd.Desktop
+Branch=stable
+Title=Lerd
+Url=https://lerd.sh/flatpak
+Homepage=https://lerd.sh
+IsRuntime=false
+RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo

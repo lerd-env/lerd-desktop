@@ -1,0 +1,25 @@
+name: Build Flatpak
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    name: Build
+    runs-on: ubuntu-latest
+    container:
+      # Bump the freedesktop tag to match runtime-version in the manifest.
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          bundle: Lerd.flatpak
+          manifest-path: flatpak/sh.lerd.Desktop.yml
+          cache-key: flatpak-builder-${{ github.sha }}
