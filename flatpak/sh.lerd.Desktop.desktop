@@ -8,3 +8,20 @@ Categories=Development;
 MimeType=x-scheme-handler/lerd;
 Terminal=false
 StartupWMClass=sh.lerd.Desktop
+Actions=dashboard;sites;services;system;
+
+[Desktop Action dashboard]
+Name=Dashboard
+Exec=sh.lerd.Desktop lerd://open/dashboard
+
+[Desktop Action sites]
+Name=Sites
+Exec=sh.lerd.Desktop lerd://open/sites
+
+[Desktop Action services]
+Name=Services
+Exec=sh.lerd.Desktop lerd://open/services
+
+[Desktop Action system]
+Name=System
+Exec=sh.lerd.Desktop lerd://open/system
