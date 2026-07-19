@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+build-dir/
+.flatpak-builder/
+*.flatpak
+*.log

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lerd</title>
+    <link rel="stylesheet" href="gate.css" />
+  </head>
+  <body>
+    <main class="gate">
+      <img class="logo" src="../assets/icon.svg" alt="Lerd" width="88" height="88" />
+      <h1>Lerd isn't running</h1>
+      <p class="lead">
+        This app connects to lerd on your machine. Start it, or install it if you
+        haven't yet.
+      </p>
+
+      <div class="card">
+        <p class="hint">Already installed? Start it in a terminal:</p>
+        <code class="cmd">lerd start</code>
+      </div>
+
+      <div class="card">
+        <p class="hint">Not installed yet? Install lerd:</p>
+        <code class="cmd">curl -fsSL https://lerd.sh/install.sh | bash</code>
+      </div>
+
+      <div class="actions">
+        <button id="install" class="btn primary">Install lerd</button>
+        <button id="retry" class="btn">Retry now</button>
+      </div>
+
+      <p id="status" class="status">Waiting for lerd on 127.0.0.1:7073…</p>
+    </main>
+    <script src="gate.js"></script>
+  </body>
+</html>

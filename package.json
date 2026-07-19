@@ -1,0 +1,16 @@
+{
+  "name": "lerd-desktop",
+  "productName": "Lerd",
+  "version": "0.1.0",
+  "description": "Lerd, a local PHP development environment for Linux and macOS",
+  "homepage": "https://lerd.sh",
+  "license": "MIT",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
