@@ -7,4 +7,4 @@ Icon=sh.lerd.Desktop
 Categories=Development;
 MimeType=x-scheme-handler/lerd;
 Terminal=false
-StartupWMClass=Lerd
+StartupWMClass=sh.lerd.Desktop

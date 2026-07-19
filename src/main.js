@@ -21,9 +21,11 @@ function grantDashboardPermissions() {
   })
 }
 
-// Set before the app is ready so the Linux WM_CLASS / taskbar identity reads
-// "Lerd" instead of the default "electron".
-app.setName('Lerd')
+// Set before the app is ready so the Linux WM_CLASS / Wayland app_id identifies
+// the window. Under Flatpak it must equal the Flatpak id (the desktop file name)
+// so KDE/Wayland matches the window to sh.lerd.Desktop.desktop and shows the
+// icon; in the dev run it reads "Lerd" for a clean taskbar label.
+app.setName(process.env.FLATPAK_ID || 'Lerd')
 
 // Claim the lerd:// scheme so clicking a native notification from the daemon
 // focuses this window at the right route. Under Flatpak the manifest's desktop

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Lerd, a local PHP development environment for Linux and macOS",
   "homepage": "https://lerd.sh",
+  "desktopName": "sh.lerd.Desktop.desktop",
   "license": "MIT",
   "main": "src/main.js",
   "scripts": {
