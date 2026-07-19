@@ -1,0 +1,69 @@
+name: Publish Flatpak repo
+
+# Builds the app, exports an OSTree repo, and deploys it plus the .flatpakref to
+# GitHub Pages, so users install with the ref (served at lerd.sh, pointing here)
+# and update with `flatpak update`.
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and export
+    runs-on: ubuntu-latest
+    container:
+      # Bump the freedesktop tag to match runtime-version in the manifest.
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and export to an OSTree repo
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --disable-rofiles-fuse --force-clean \
+            --install-deps-from=flathub --default-branch=stable \
+            --repo=ostree-repo build-dir flatpak/sh.lerd.Desktop.yml
+          flatpak build-update-repo --generate-static-deltas ostree-repo
+
+      - name: Assemble the Pages site (repo at root + flatpakref)
+        run: |
+          base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY##*/}"
+          mkdir -p site
+          cp -a ostree-repo/. site/
+          {
+            echo "[Flatpak Ref]"
+            echo "Name=sh.lerd.Desktop"
+            echo "Branch=stable"
+            echo "Title=Lerd"
+            echo "Url=${base}"
+            echo "Homepage=https://lerd.sh"
+            echo "IsRuntime=false"
+            echo "RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo"
+          } > site/lerd.flatpakref
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
