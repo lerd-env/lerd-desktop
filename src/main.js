@@ -47,12 +47,16 @@ function firstDeepLink(argv) {
   return (argv || []).find((a) => typeof a === 'string' && a.startsWith('lerd://')) || null
 }
 
-// handleDeepLink focuses the window and navigates to the notification's route.
+// handleDeepLink focuses the window and navigates to the route. The dashboard is
+// hash-routed, so a bare path (e.g. from a desktop action, lerd://open/sites) is
+// normalized to a hash; notification routes already carry the '#'.
 function handleDeepLink(url) {
   if (!mainWindow || !url) return
   mainWindow.show()
   mainWindow.focus()
-  mainWindow.loadURL('http://127.0.0.1:7073/' + routeFromDeepLink(url))
+  let route = routeFromDeepLink(url)
+  if (route && !route.startsWith('#')) route = '#' + route
+  mainWindow.loadURL('http://127.0.0.1:7073/' + route)
 }
 
 function createWindow() {
