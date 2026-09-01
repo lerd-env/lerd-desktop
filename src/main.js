@@ -1,10 +1,13 @@
 'use strict'
 
 const path = require('node:path')
-const { app, BrowserWindow, Menu, shell, ipcMain, session } = require('electron')
+const { app, BrowserWindow, Menu, shell, ipcMain, session, screen } = require('electron')
 const { probe, dashboardURL } = require('./detect')
+const windowstate = require('./windowstate')
 
 const DASHBOARD_ORIGIN = 'http://127.0.0.1:7073'
+const STATE_FILE = 'window-state.json'
+const SAVE_DELAY_MS = 400
 
 // grantDashboardPermissions lets the first-party lerd dashboard use notifications
 // (and the other permissions it asks for) without a prompt, so its "Allow
@@ -59,13 +62,51 @@ function handleDeepLink(url) {
   mainWindow.loadURL('http://127.0.0.1:7073/' + route)
 }
 
+// The frame sits with the rest of the app's state, so it follows the Flatpak's
+// userData directory rather than a path of our own.
+function stateFile() {
+  return path.join(app.getPath('userData'), STATE_FILE)
+}
+
+// saveWindowState stores the normal frame rather than the live one, so a window
+// closed while maximized comes back maximized and still knows its old size.
+function saveWindowState() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  try {
+    const bounds = mainWindow.getNormalBounds()
+    windowstate.write(stateFile(), {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      maximized: mainWindow.isMaximized(),
+    })
+  } catch {
+    // Reading the frame can fail on a window already on its way out.
+  }
+}
+
+let saveTimer = null
+
+// resize and move fire dozens of times through a single drag, so they debounce.
+// The maximize and close handlers write straight away.
+function scheduleSave() {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(saveWindowState, SAVE_DELAY_MS)
+}
+
 function createWindow() {
+  const workAreas = screen.getAllDisplays().map((display) => display.workArea)
+  const state = windowstate.normalize(windowstate.read(stateFile()), workAreas)
+
   mainWindow = new BrowserWindow({
     title: 'Lerd',
-    width: 1280,
-    height: 800,
-    minWidth: 940,
-    minHeight: 600,
+    width: state.width,
+    height: state.height,
+    x: state.x,
+    y: state.y,
+    minWidth: windowstate.MIN_WIDTH,
+    minHeight: windowstate.MIN_HEIGHT,
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     backgroundColor: '#0b0f17',
     autoHideMenuBar: true,
@@ -74,6 +115,17 @@ function createWindow() {
       nodeIntegration: false,
       preload: path.join(__dirname, 'preload.js'),
     },
+  })
+
+  if (state.maximized) mainWindow.maximize()
+
+  mainWindow.on('resize', scheduleSave)
+  mainWindow.on('move', scheduleSave)
+  mainWindow.on('maximize', saveWindowState)
+  mainWindow.on('unmaximize', saveWindowState)
+  mainWindow.on('close', () => {
+    clearTimeout(saveTimer)
+    saveWindowState()
   })
 
   // Keep the window titled "Lerd" rather than inheriting the dashboard's <title>.
