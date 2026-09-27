@@ -3,7 +3,7 @@
 const test = require('node:test')
 const assert = require('node:assert')
 const http = require('node:http')
-const { menuTemplate, parseRunning, fetchRunning, lerdExePath } = require('../src/tray')
+const { menuTemplate, parseRunning, fetchRunning, lerdExePath, trayIconFile } = require('../src/tray')
 
 const noop = () => {}
 const actions = { open: noop, start: noop, stop: noop, quit: noop }
@@ -57,4 +57,11 @@ test('fetchRunning asks the dashboard and never rejects', async () => {
 
 test('lerdExePath points at the shim wsl:setup installs', () => {
   assert.strictEqual(lerdExePath('C:\\Users\\me\\AppData\\Local'), 'C:\\Users\\me\\AppData\\Local\\lerd\\bin\\lerd.exe')
+})
+
+test('tray icon follows lerd-tray: red when stopped, mono against the taskbar when running', () => {
+  assert.strictEqual(trayIconFile({ running: false, darkTaskbar: true }), 'stopped.png')
+  assert.strictEqual(trayIconFile({ running: null, darkTaskbar: false }), 'stopped.png')
+  assert.strictEqual(trayIconFile({ running: true, darkTaskbar: true }), 'running-white.png')
+  assert.strictEqual(trayIconFile({ running: true, darkTaskbar: false }), 'running-dark.png')
 })

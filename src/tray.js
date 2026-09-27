@@ -53,10 +53,18 @@ function menuTemplate({ running, busy }, { open, start, stop, quit }) {
   ]
 }
 
+// trayIconFile picks the icon the way lerd-tray does on Linux: the red L while
+// lerd is stopped, which reads on any taskbar, and a monochrome L against the
+// taskbar's own colour while it runs. The files live in assets/tray.
+function trayIconFile({ running, darkTaskbar }) {
+  if (running !== true) return 'stopped.png'
+  return darkTaskbar ? 'running-white.png' : 'running-dark.png'
+}
+
 // lerdExePath is where `lerd wsl:setup` puts the Windows shim that runs lerd
 // inside the distro.
 function lerdExePath(localAppData = process.env.LOCALAPPDATA || '') {
   return path.win32.join(localAppData, 'lerd', 'bin', 'lerd.exe')
 }
 
-module.exports = { parseRunning, fetchRunning, menuTemplate, lerdExePath }
+module.exports = { parseRunning, fetchRunning, menuTemplate, lerdExePath, trayIconFile }

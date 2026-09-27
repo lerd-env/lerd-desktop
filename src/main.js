@@ -3,7 +3,7 @@
 const path = require('node:path')
 const { execFile } = require('node:child_process')
 const os = require('node:os')
-const { app, BrowserWindow, Menu, Tray, nativeImage, shell, ipcMain, session, screen } = require('electron')
+const { app, BrowserWindow, Menu, Tray, nativeTheme, shell, ipcMain, session, screen } = require('electron')
 const { probe, dashboardURL } = require('./detect')
 const windowstate = require('./windowstate')
 const tray = require('./tray')
@@ -182,13 +182,19 @@ function runLerd(args, done) {
 }
 
 function setupTray() {
-  const image = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png')).resize({ width: 32 })
-  const icon = new Tray(image)
+  const iconFor = (running) =>
+    path.join(__dirname, '..', 'assets', 'tray',
+      tray.trayIconFile({ running, darkTaskbar: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI }))
+  const icon = new Tray(iconFor(null))
   icon.setToolTip('Lerd')
   icon.on('click', showWindow)
   let busy = ''
+  let running = null
+  // The taskbar can turn light or dark on its own, apart from the apps.
+  nativeTheme.on('updated', () => icon.setImage(iconFor(running)))
   const refresh = async () => {
-    const running = await tray.fetchRunning()
+    running = await tray.fetchRunning()
+    icon.setImage(iconFor(running))
     const run = (label, args) => () => {
       busy = label
       refresh()
