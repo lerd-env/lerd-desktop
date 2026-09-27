@@ -1,13 +1,22 @@
 'use strict'
 
 const path = require('node:path')
-const { app, BrowserWindow, Menu, shell, ipcMain, session, screen } = require('electron')
+const { execFile } = require('node:child_process')
+const os = require('node:os')
+const { app, BrowserWindow, Menu, Tray, nativeImage, shell, ipcMain, session, screen } = require('electron')
 const { probe, dashboardURL } = require('./detect')
 const windowstate = require('./windowstate')
+const tray = require('./tray')
 
 const DASHBOARD_ORIGIN = 'http://127.0.0.1:7073'
 const STATE_FILE = 'window-state.json'
 const SAVE_DELAY_MS = 400
+const TRAY_POLL_MS = 5000
+
+// On Windows the app lives in the tray: closing the window hides it so the
+// dashboard keeps delivering notifications, and it starts hidden at login.
+const IS_WINDOWS = process.platform === 'win32'
+const START_HIDDEN = process.argv.includes('--hidden')
 
 // grantDashboardPermissions lets the first-party lerd dashboard use notifications
 // (and the other permissions it asks for) without a prompt, so its "Allow
@@ -39,6 +48,7 @@ if (!process.env.FLATPAK_ID) {
 }
 
 let mainWindow = null
+let quitting = false
 
 // routeFromDeepLink turns lerd://open/<route> into the dashboard path/hash.
 function routeFromDeepLink(url) {
@@ -108,6 +118,7 @@ function createWindow() {
     minWidth: windowstate.MIN_WIDTH,
     minHeight: windowstate.MIN_HEIGHT,
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
+    show: !START_HIDDEN,
     backgroundColor: '#0b0f17',
     autoHideMenuBar: true,
     webPreferences: {
@@ -123,9 +134,13 @@ function createWindow() {
   mainWindow.on('move', scheduleSave)
   mainWindow.on('maximize', saveWindowState)
   mainWindow.on('unmaximize', saveWindowState)
-  mainWindow.on('close', () => {
+  mainWindow.on('close', (e) => {
     clearTimeout(saveTimer)
     saveWindowState()
+    if (IS_WINDOWS && !quitting) {
+      e.preventDefault()
+      mainWindow.hide()
+    }
   })
 
   // Keep the window titled "Lerd" rather than inheriting the dashboard's <title>.
@@ -152,6 +167,45 @@ async function showDashboardOrGate() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'gate', 'gate.html'))
   }
+}
+
+function showWindow() {
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+// runLerd runs a lerd command through the Windows shim, which boots WSL if it
+// has to. It runs from the home folder: the app's own is System32, which WSL
+// would mount as the command's working directory.
+function runLerd(args, done) {
+  execFile(tray.lerdExePath(), args, { windowsHide: true, cwd: os.homedir() }, () => done())
+}
+
+function setupTray() {
+  const image = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png')).resize({ width: 32 })
+  const icon = new Tray(image)
+  icon.setToolTip('Lerd')
+  icon.on('click', showWindow)
+  let busy = ''
+  const refresh = async () => {
+    const running = await tray.fetchRunning()
+    const run = (label, args) => () => {
+      busy = label
+      refresh()
+      runLerd(args, () => {
+        busy = ''
+        refresh()
+      })
+    }
+    icon.setContextMenu(Menu.buildFromTemplate(tray.menuTemplate({ running, busy }, {
+      open: showWindow,
+      start: run('Starting Lerd…', ['start']),
+      stop: run('Stopping Lerd…', ['stop']),
+      quit: () => app.quit(),
+    })))
+  }
+  refresh()
+  setInterval(refresh, TRAY_POLL_MS)
 }
 
 function wireIpc() {
@@ -186,6 +240,10 @@ if (!gotLock) {
     wireIpc()
     Menu.setApplicationMenu(null)
     createWindow()
+    if (IS_WINDOWS) {
+      setupTray()
+      app.setLoginItemSettings({ openAtLogin: true, args: ['--hidden'] })
+    }
     const coldDeepLink = firstDeepLink(process.argv)
     if (coldDeepLink) handleDeepLink(coldDeepLink)
     else showDashboardOrGate()
@@ -193,6 +251,11 @@ if (!gotLock) {
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
+  })
+
+  // Shutdown, sign-out and the tray's Quit all pass here; let the window close.
+  app.on('before-quit', () => {
+    quitting = true
   })
 
   app.on('window-all-closed', () => {
