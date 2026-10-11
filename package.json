@@ -2,16 +2,45 @@
   "name": "lerd-desktop",
   "productName": "Lerd",
   "version": "0.1.0",
-  "description": "Lerd, a local PHP development environment for Linux and macOS",
+  "description": "Lerd, a local PHP development environment for Linux, macOS and Windows",
   "homepage": "https://lerd.sh",
   "desktopName": "sh.lerd.Desktop.desktop",
   "license": "MIT",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test"
+    "test": "node --test",
+    "dist:win": "electron-builder --win nsis --publish never"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "sh.lerd.Desktop",
+    "productName": "Lerd",
+    "files": [
+      "src/**",
+      "gate/**",
+      "assets/**",
+      "package.json"
+    ],
+    "protocols": [
+      {
+        "name": "Lerd",
+        "schemes": [
+          "lerd"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "artifactName": "Lerd-Setup.exe",
+      "oneClick": true,
+      "perMachine": false
+    }
   }
 }

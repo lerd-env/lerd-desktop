@@ -1,0 +1,32 @@
+name: Windows installer
+
+# Builds Lerd-Setup.exe on a Windows runner, where electron-builder sets the
+# exe's icon natively, and attaches it to the release under a fixed name so
+# lerd's own Windows installer can fetch it from releases/latest/download.
+
+on:
+  pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx electron-builder --win nsis --publish never
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/Lerd-Setup.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
