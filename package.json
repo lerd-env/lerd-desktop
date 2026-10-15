@@ -9,9 +9,11 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test"
+    "test": "node --test",
+    "package:win": "node scripts/package-win.js"
   },
   "devDependencies": {
+    "@electron/packager": "^20.3.0",
     "electron": "^44.7.0"
   }
 }

@@ -1,0 +1,46 @@
+name: Package for Windows
+
+# Packages the Windows app into lerd-desktop-win32-<arch>.zip. Every push and
+# pull request keeps them as a run artifact; a published release also gets them
+# as assets, which is where lerd's Windows installer downloads the app from.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npm run package:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lerd-desktop-win32
+          path: dist/lerd-desktop-win32-*.zip
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/lerd-desktop-win32-x64.zip dist/lerd-desktop-win32-arm64.zip --clobber
