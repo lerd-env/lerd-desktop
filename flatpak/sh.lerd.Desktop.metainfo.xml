@@ -49,6 +49,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.0" date="2026-10-24">
+      <description>
+        <p>Runs on Windows for lerd under WSL, holding lerd's tray menu, notifications and lerd:// links there, and ships Install-Lerd.exe, a wizard that sets up WSL, Ubuntu, lerd and this app on a machine with nothing installed.</p>
+      </description>
+    </release>
     <release version="0.1.6" date="2026-10-11">
       <description>
         <p>The app reports its real version again.</p>
