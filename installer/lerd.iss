@@ -926,11 +926,13 @@ begin
   if Local <> '' then
     Script := 'cd "$(wslpath ''' + Local + ''')" && bash install.sh --local ./lerd'
   else
-    { Windows support arrives in 1.38, so while the newest stable is older the
-      beta line is installed instead; once 1.38 is out this falls back to stable. }
+    { Windows support arrives in 1.38, so until it is stable the beta line is
+      installed, with install.sh from that release: lerd.sh serves the stable
+      one, which before 1.38 leaves lerd.exe out. }
     Script := 'v=$(curl -fsSLo /dev/null -w ''%{url_effective}'' https://github.com/lerd-env/lerd/releases/latest); ' +
-      'flag=; printf ''%s\n'' 1.38.0 ${v##*/v} | sort -VC || flag=--beta; ' +
-      'curl -fsSL https://lerd.sh/install.sh | bash -s -- $flag';
+      'v=${v##*/}; flag=; printf ''%s\n'' 1.38.0 ${v#v} | sort -VC || { flag=--beta; ' +
+      'v=$(curl -fsSL https://github.com/lerd-env/lerd/releases.atom | grep -oE ''releases/tag/v[^"<[:space:]]+'' | head -1); v=${v#releases/tag/}; }; ' +
+      'curl -fsSL https://raw.githubusercontent.com/lerd-env/lerd/$v/install.sh | bash -s -- $flag';
   Result := Run(FmtMessage(CustomMessage('StepLerd'), [Distro]), WSLExe, AsUser(Script))
     and ApplyOptions
     and TrustCA
