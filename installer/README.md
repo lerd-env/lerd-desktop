@@ -94,7 +94,7 @@ The installer only changes when one of the things it relies on does:
 | The package list in `InstallPackages` | `install.sh` starts requiring another package |
 | `Ubuntu-24.04` | a newer Ubuntu LTS should be the default |
 | `https://lerd.sh/install.sh`, `lerd wsl:setup`, `lerd dns:disable`, `lerd node:unmanage`, `lerd uninstall --keep-data` | one of them moves or changes its meaning |
-| Lerd's mkcert at `~/.local/share/lerd/bin/mkcert` | Lerd moves it |
+| Lerd's root CA at mkcert's CAROOT, `~/.local/share/mkcert/rootCA.pem` unless `CAROOT` or `XDG_DATA_HOME` is set | Lerd moves it |
 | Lerd's Windows side: `%LOCALAPPDATA%\lerd`, the `lerd` Run key, the NRPT rule commented `lerd`, the `lerd-lan` Hyper-V firewall rule, the `sh.lerd.Lerd` toast app ID | Lerd changes how `wsl:setup` installs it, so uninstalling still cleans up |
 | microsoft/WSL release assets named `*.x64.msi` / `*.arm64.msi` | Microsoft renames them |
 | lerd-env/lerd-desktop release assets named `lerd-desktop-win32-x64.zip` / `lerd-desktop-win32-arm64.zip`, with `lerd-desktop.exe` at their root | lerd-desktop renames them or the executable |
