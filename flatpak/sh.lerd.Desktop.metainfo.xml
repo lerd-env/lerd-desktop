@@ -49,6 +49,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.2" date="2026-10-28">
+      <description>
+        <p>Install-Lerd.exe trusts Lerd's certificate in Windows again, and its uninstaller takes it back, now that Lerd no longer ships mkcert.</p>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-10-24">
       <description>
         <p>Install-Lerd.exe connects Lerd with Windows again on a fresh machine, by running the install script from the lerd release it installs.</p>
