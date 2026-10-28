@@ -890,8 +890,9 @@ begin
   if not LerdInstalled and DNSLocalhost.Checked then
     Exit;
   Crt := ExpandConstant('{tmp}\lerd-rootCA.crt');
-  { No CA means .localhost mode, which has no certificates to trust. }
-  if CaptureLines(WSLExe, AsUser('cp "$(~/.local/share/lerd/bin/mkcert -CAROOT)/rootCA.pem" "$(wslpath ''' + Crt + ''')"'), Lines) <> 0 then
+  { No CA means .localhost mode, which has no certificates to trust. mkcert's
+    CAROOT is read directly: Lerd no longer ships mkcert to ask for it. }
+  if CaptureLines(WSLExe, AsUser('cp "${CAROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/mkcert}/rootCA.pem" "$(wslpath ''' + Crt + ''')"'), Lines) <> 0 then
     Exit;
   if not PowerShell('$c = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 ''' + Crt + '''; ' +
     '$c.Thumbprint; if (Test-Path (''Cert:\CurrentUser\Root\'' + $c.Thumbprint)) { ''trusted'' }', Lines)
