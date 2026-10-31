@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('lerd', {
   probe: () => ipcRenderer.invoke('lerd:probe'),
   loadDashboard: () => ipcRenderer.invoke('lerd:load-dashboard'),
   openInstall: () => ipcRenderer.invoke('lerd:open-install'),
+  platform: process.platform,
 })

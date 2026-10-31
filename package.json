@@ -10,7 +10,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "package:win": "node scripts/package-win.js"
+    "package:win": "node scripts/package-win.js",
+    "package:mac": "node scripts/package-mac.js"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",

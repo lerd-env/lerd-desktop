@@ -4,7 +4,8 @@ const path = require('node:path')
 const { execFile, spawn } = require('node:child_process')
 const os = require('node:os')
 const fs = require('node:fs')
-const { app, BrowserWindow, Menu, Notification, Tray, nativeTheme, shell, ipcMain, session, screen } = require('electron')
+const { app, BrowserWindow, Menu, Notification, Tray, nativeTheme, shell, ipcMain, session, screen, clipboard } = require('electron')
+const { installAction } = require('./install')
 const { probe, dashboardURL } = require('./detect')
 const windowstate = require('./windowstate')
 const { navigation, isDashboard } = require('./navigation')
@@ -355,7 +356,19 @@ function setupTray() {
 function wireIpc() {
   ipcMain.handle('lerd:probe', () => probe())
   ipcMain.handle('lerd:load-dashboard', () => mainWindow.loadURL(dashboardURL()))
-  ipcMain.handle('lerd:open-install', () => shell.openExternal('https://lerd.sh'))
+  ipcMain.handle('lerd:open-install', () => {
+    const action = installAction(process.platform)
+    if (action.copy) {
+      clipboard.writeText(action.copy)
+      return 'copied'
+    }
+    if (action.run) {
+      execFile(action.run.file, action.run.args, () => {})
+      return 'terminal'
+    }
+    shell.openExternal(action.open)
+    return 'opened'
+  })
 }
 
 const gotLock = app.requestSingleInstanceLock()
@@ -382,7 +395,8 @@ if (!gotLock) {
   app.whenReady().then(() => {
     grantDashboardPermissions()
     wireIpc()
-    Menu.setApplicationMenu(null)
+    // macOS keeps the default menu: without it Cmd+C, Cmd+V and Cmd+Q do nothing.
+    if (process.platform !== 'darwin') Menu.setApplicationMenu(null)
     createWindow()
     if (IS_WINDOWS) {
       setupTray()
