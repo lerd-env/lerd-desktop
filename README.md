@@ -8,7 +8,7 @@
 > notifications. No browser tab to hunt for, no permission prompts.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)]()
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)]()
 [![Flathub](https://img.shields.io/badge/Flathub-coming%20soon-4a90d9?logo=flathub&logoColor=white)](https://lerd.sh)
 [![Docs](https://img.shields.io/badge/docs-lerd.sh-blue)](https://lerd.sh)
 [![Companion to Lerd](https://img.shields.io/badge/for-Lerd-ff2d20)](https://github.com/lerd-env/lerd)
@@ -91,15 +91,6 @@ installed it opens there instead of the browser. Coming soon to Flathub.
 If Lerd isn't installed yet, the app's start screen copies the install command
 for you to paste into a terminal.
 
-### macOS
-
-Download `Lerd-arm64.dmg` (Apple silicon) or `Lerd-x64.dmg` (Intel) from the
-[latest release](https://github.com/lerd-env/lerd-desktop/releases/latest) and
-drag **Lerd** into Applications. It is not signed with an Apple Developer ID yet,
-so the first time, right-click the app and choose **Open**. If Lerd isn't
-installed, the start screen's **Install lerd** opens Terminal and runs the
-installer there.
-
 ### Windows
 
 Download `Install-Lerd.exe` from the
@@ -160,7 +151,7 @@ Building the Flatpak locally (no root) is covered in
 `lerd-desktop-win32-x64.zip` and the arm64 one in `dist/`, and
 [`installer/README.md`](installer/README.md) builds `Install-Lerd.exe` around them.
 On macOS, `npm run package:mac` leaves `Lerd-x64.dmg` and `Lerd-arm64.dmg` in
-`dist/`. CI builds all of them on every pull request, and a published release
+`dist/`. CI builds the Windows ones on every pull request, and a published release
 carries them.
 
 ## License

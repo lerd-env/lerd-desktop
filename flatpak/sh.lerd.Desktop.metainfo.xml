@@ -51,7 +51,7 @@
   <releases>
     <release version="0.2.3" date="2026-10-31">
       <description>
-        <p>When Lerd isn't installed, the start screen's button copies the install command to paste into a terminal. Lerd Desktop is also available for macOS as a DMG for Apple silicon and Intel, where the same button runs the installer in Terminal.</p>
+        <p>When Lerd isn't installed, the start screen's button copies the install command to paste into a terminal.</p>
       </description>
     </release>
     <release version="0.2.2" date="2026-10-28">
