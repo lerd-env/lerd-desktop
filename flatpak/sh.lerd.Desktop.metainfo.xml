@@ -49,6 +49,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.3" date="2026-10-31">
+      <description>
+        <p>When Lerd isn't installed, the start screen's button copies the install command to paste into a terminal. Lerd Desktop is also available for macOS as a DMG for Apple silicon and Intel, where the same button runs the installer in Terminal.</p>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-10-28">
       <description>
         <p>Install-Lerd.exe trusts Lerd's certificate in Windows again, and its uninstaller takes it back, now that Lerd no longer ships mkcert.</p>
