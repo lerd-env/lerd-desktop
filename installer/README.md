@@ -43,7 +43,7 @@ Download `Install-Lerd.exe` from the [latest release](https://github.com/lerd-en
 The installer is a bootstrapper: it prepares Windows and hands Lerd itself to `install.sh`, the way `install.ps1` does from a PowerShell window. It ships with the desktop app and carries the app's version.
 
 1. **WSL features.** Enables `Microsoft-Windows-Subsystem-Linux` and `VirtualMachinePlatform` and offers the restart they need. Setup registers itself in `RunOnce` and resumes after you sign back in with the same account.
-2. **WSL.** Installs the latest MSI from github.com/microsoft/WSL. Setup only ever runs the real `wsl.exe` in `C:\Program Files\WSL`; the System32 stub opens its own window offering to install WSL.
+2. **WSL.** Installs the latest MSI from github.com/microsoft/WSL, also over a WSL too old to offer the distro. Setup only ever runs the real `wsl.exe` in `C:\Program Files\WSL`; the System32 stub opens its own window offering to install WSL.
 3. **Ubuntu-24.04**, with a Linux user from the wizard's username and password page. The password reaches `chpasswd` through `WSLENV`, never a command line.
 4. **Options page**: `.test` with HTTPS (default) or `.localhost` over HTTP, and whether Lerd manages Node.js. Lerd's installers take the defaults, and a change runs `lerd dns:disable` or `lerd node:unmanage` afterwards. Skipped when Lerd is already installed.
 5. **Packages.** Installs Podman and the packages `install.sh` checks for, and turns on linger. The package list lives in `InstallPackages` in `lerd.iss`; keep it in step with `install.sh`.

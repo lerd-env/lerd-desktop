@@ -69,6 +69,7 @@ PasswordMismatch=The passwords do not match.
 ReadyRestart=Setup will enable the Windows features WSL 2 runs on, then restart Windows. It carries on by itself after you sign back in.
 ReadySteps=Setup will:
 ReadyWSL=install WSL from github.com/microsoft/WSL
+ReadyNoMirrored=Mirrored networking needs Windows 11 22H2 or newer. Lerd will install, but .test sites may not open from Windows.
 ReadyDistro=install the %1 distro
 ReadyUser=create the Linux user %1
 ReadyUserExisting=use the existing Linux user %1
@@ -428,6 +429,33 @@ begin
       Result := True;
 end;
 
+{ DistroOffered reports whether wsl.exe can install the distro. Old WSL reads a
+  legacy list with no versioned Ubuntu. A failed lookup counts as offered, so
+  the install itself reports the network error rather than a pointless update. }
+function DistroOffered: Boolean;
+var
+  Lines: TArrayOfString;
+  I: Integer;
+begin
+  Result := CaptureLines(RealWSLExe, '--list --online', Lines) <> 0;
+  for I := 0 to GetArrayLength(Lines) - 1 do
+    if Pos(Distro + ' ', Lines[I]) = 1 then
+      Result := True;
+end;
+
+function WSLReady: Boolean;
+begin
+  Result := WSLInstalled and (DistroInstalled or DistroOffered);
+end;
+
+function MirroredSupported: Boolean;
+var
+  Version: TWindowsVersion;
+begin
+  GetWindowsVersionEx(Version);
+  Result := Version.Build >= 22621;
+end;
+
 { ExistingUser returns the distro's uid 1000 user, the one Setup creates. }
 function ExistingUser: String;
 var
@@ -654,7 +682,9 @@ begin
     Exit;
   end;
   Result := CustomMessage('ReadySteps') + NewLine;
-  if not WSLInstalled then
+  if not MirroredSupported then
+    Result := CustomMessage('ReadyNoMirrored') + NewLine + NewLine + Result;
+  if not WSLReady then
     Result := Result + Space + '- ' + CustomMessage('ReadyWSL') + NewLine;
   if not DistroInstalled then
     Result := Result + Space + '- ' + FmtMessage(CustomMessage('ReadyDistro'), [Distro]) + NewLine;
@@ -722,7 +752,7 @@ var
   Arch, Msi: String;
   Code, I: Integer;
 begin
-  Result := WSLInstalled;
+  Result := WSLReady;
   if Result then
     Exit;
   SetStatus(CustomMessage('StepWSL'));
@@ -760,7 +790,7 @@ begin
     stub asked in that window offers to install WSL all over again. }
   for I := 1 to 60 do
   begin
-    if WSLInstalled then
+    if WSLReady then
     begin
       Result := True;
       Exit;
