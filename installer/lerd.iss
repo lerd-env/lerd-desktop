@@ -456,8 +456,8 @@ begin
   end;
 end;
 
-{ WiredDistro is the distro Windows already runs Lerd from, per lerd-wsl.conf. }
-function WiredDistro: String;
+{ Wired reads the distro or user Windows already runs Lerd with, from lerd-wsl.conf. }
+function Wired(const Key: String): String;
 var
   Lines: TArrayOfString;
   I: Integer;
@@ -466,8 +466,8 @@ begin
   if not LoadStringsFromFile(ExpandConstant('{localappdata}\lerd\bin\lerd-wsl.conf'), Lines) then
     Exit;
   for I := 0 to GetArrayLength(Lines) - 1 do
-    if Pos('distro=', Lines[I]) = 1 then
-      Result := Trim(Copy(Lines[I], 8, Length(Lines[I])));
+    if Pos(Key + '=', Lines[I]) = 1 then
+      Result := Trim(Copy(Lines[I], Length(Key) + 2, Length(Lines[I])));
 end;
 
 { InstalledDistro is the distro to stay on: the one Lerd runs from, or else the
@@ -475,17 +475,17 @@ end;
 function InstalledDistro: String;
 var
   Lines: TArrayOfString;
-  Wired: String;
+  Current: String;
   I: Integer;
 begin
   Result := '';
   if not FileExists(RealWSLExe) or (CaptureLines(RealWSLExe, '-l -q', Lines) <> 0) then
     Exit;
-  Wired := WiredDistro;
+  Current := Wired('distro');
   for I := 0 to GetArrayLength(Lines) - 1 do
-    if CompareText(Lines[I], Wired) = 0 then
+    if CompareText(Lines[I], Current) = 0 then
     begin
-      Result := Wired;
+      Result := Current;
       Exit;
     end;
   Result := NewestUbuntu(Lines);
@@ -527,14 +527,25 @@ begin
   Result := Version.Build >= 22621;
 end;
 
-{ ExistingUser returns the distro's uid 1000 user, the one Setup creates. }
-function ExistingUser: String;
+{ IdName returns the login of a user or uid in the distro, '' when there is none. }
+function IdName(const User: String): String;
 var
   Lines: TArrayOfString;
 begin
   Result := '';
-  if (CaptureLines(WSLExe, '-d ' + Distro + ' -u root --exec id -nu 1000', Lines) = 0) and (GetArrayLength(Lines) > 0) then
+  if (CaptureLines(WSLExe, '-d ' + Distro + ' -u root --exec id -nu ' + User, Lines) = 0) and (GetArrayLength(Lines) > 0) then
     Result := Lines[0];
+end;
+
+{ ExistingUser returns the user Lerd runs as here, or else the distro's uid 1000
+  user, the one Setup creates. }
+function ExistingUser: String;
+begin
+  Result := '';
+  if (CompareText(Distro, Wired('distro')) = 0) and (Wired('user') <> '') then
+    Result := IdName(Wired('user'));
+  if Result = '' then
+    Result := IdName('1000');
 end;
 
 { LerdInstalledFor reports whether lerd is already in the user's ~/.local/bin, in
@@ -878,9 +889,9 @@ begin
     Run(FmtMessage(CustomMessage('StepDistro'), [Distro]), WSLExe, '--install -d ' + Distro + ' --no-launch --web-download');
 end;
 
-{ MarkProvisioned makes uid 1000 the distro's default user and tells WSL its
+{ MarkProvisioned makes Uid the distro's default user and tells WSL its
   first-run setup is done, so the distro never asks for a user of its own. }
-procedure MarkProvisioned;
+procedure MarkProvisioned(Uid: Integer);
 var
   Keys: TArrayOfString;
   Name: String;
@@ -891,7 +902,7 @@ begin
   for I := 0 to GetArrayLength(Keys) - 1 do
     if RegQueryStringValue(HKCU, LxssKey + '\' + Keys[I], 'DistributionName', Name) and (CompareText(Name, Distro) = 0) then
     begin
-      RegWriteDWordValue(HKCU, LxssKey + '\' + Keys[I], 'DefaultUid', 1000);
+      RegWriteDWordValue(HKCU, LxssKey + '\' + Keys[I], 'DefaultUid', Uid);
       RegWriteDWordValue(HKCU, LxssKey + '\' + Keys[I], 'RunOOBE', 0);
     end;
 end;
@@ -903,6 +914,7 @@ end;
 function EnsureUser: Boolean;
 var
   Status, WSLEnv: String;
+  Lines: TArrayOfString;
 begin
   Status := FmtMessage(CustomMessage('StepUser'), [LinuxUser]);
   if not UserExists then
@@ -928,9 +940,10 @@ begin
   Result := Run(Status, WSLExe, AsRoot('f=/etc/wsl.conf; touch $f' + #10 +
       'grep -q ''^systemd=true'' $f || printf ''\n[boot]\nsystemd=true\n'' >> $f' + #10 +
       'grep -q ''^default='' $f || printf ''\n[user]\ndefault=' + LinuxUser + '\n'' >> $f'))
+    and (CaptureLines(WSLExe, '-d ' + Distro + ' -u root --exec id -u ' + LinuxUser, Lines) = 0)
     and Run(Status, WSLExe, '--terminate ' + Distro);
   if Result then
-    MarkProvisioned;
+    MarkProvisioned(StrToIntDef(Lines[0], 1000));
 end;
 
 { InstallPackages installs the packages lerd's installer checks for, and turns
@@ -940,7 +953,7 @@ function InstallPackages: Boolean;
 begin
   Result := Run(CustomMessage('StepPackages'), WSLExe, AsRoot(
     'export DEBIAN_FRONTEND=noninteractive' + #10 +
-    'apt-get update -q && apt-get install -y -q podman uidmap fuse-overlayfs slirp4netns curl git unzip libnss3-tools && ' +
+    '{ ! command -v apt-get >/dev/null || { apt-get update -q && apt-get install -y -q podman uidmap fuse-overlayfs slirp4netns curl git unzip libnss3-tools; }; } && ' +
     'loginctl enable-linger ' + LinuxUser));
 end;
 
