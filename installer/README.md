@@ -24,7 +24,7 @@ That's the whole point: **Lerd on Windows should feel like any other Windows app
 ## What you get
 
 - 🧙 **A wizard, not a tutorial.** It asks for a Linux username, a password and two choices, and does the rest.
-- 🐧 **WSL2 and Ubuntu 24.04, set up right.** It turns on the Windows features and installs the latest WSL from Microsoft. It creates your Linux user and enables systemd, which Lerd needs.
+- 🐧 **WSL2 and the newest Ubuntu LTS, set up right.** It turns on the Windows features and installs the latest WSL from Microsoft. It creates your Linux user and enables systemd, which Lerd needs.
 - 🔁 **Survives the reboot.** When Windows needs a restart, the installer picks up where it left off after you sign back in.
 - 🌐 **`.test` domains in your Windows browser**, over HTTPS with Lerd's certificate trusted by Windows. Or plain `.localhost` over HTTP if you prefer.
 - 🖥️ **The Lerd desktop app.** The dashboard in its own window and Lerd's icon in the tray, with native Windows notifications for mail, failing workers and finished jobs. It starts with Windows.
@@ -43,8 +43,8 @@ Download `Install-Lerd.exe` from the [latest release](https://github.com/lerd-en
 The installer is a bootstrapper: it prepares Windows and hands Lerd itself to `install.sh`, the way `install.ps1` does from a PowerShell window. It ships with the desktop app and carries the app's version.
 
 1. **WSL features.** Enables `Microsoft-Windows-Subsystem-Linux` and `VirtualMachinePlatform` and offers the restart they need. Setup registers itself in `RunOnce` and resumes after you sign back in with the same account.
-2. **WSL.** Installs the latest MSI from github.com/microsoft/WSL, also over a WSL too old to offer the distro. Setup only ever runs the real `wsl.exe` in `C:\Program Files\WSL`; the System32 stub opens its own window offering to install WSL.
-3. **Ubuntu-24.04**, with a Linux user from the wizard's username and password page. The password reaches `chpasswd` through `WSLENV`, never a command line.
+2. **WSL.** Installs the latest MSI from github.com/microsoft/WSL, also over a WSL too old to list a usable Ubuntu. Setup only ever runs the real `wsl.exe` in `C:\Program Files\WSL`; the System32 stub opens its own window offering to install WSL.
+3. **The newest `Ubuntu-NN.NN` WSL offers**, or one from 24.04 on that is already installed, with a Linux user from the wizard's username and password page. The password reaches `chpasswd` through `WSLENV`, never a command line.
 4. **Options page**: `.test` with HTTPS (default) or `.localhost` over HTTP, and whether Lerd manages Node.js. Lerd's installers take the defaults, and a change runs `lerd dns:disable` or `lerd node:unmanage` afterwards. Skipped when Lerd is already installed.
 5. **Packages.** Installs Podman and the packages `install.sh` checks for, and turns on linger. The package list lives in `InstallPackages` in `lerd.iss`; keep it in step with `install.sh`.
 6. **Desktop app.** Downloads `lerd-desktop-win32-<arch>.zip` from the latest lerd-env/lerd-desktop release into `{app}\desktop`, unless that release is the one already there, and registers it for the signed-in user: the `sh.lerd.Lerd` app ID with Lerd's logo, which its notifications are posted under, the `lerd://` scheme, a Start menu shortcut and a `lerd-desktop` Run entry that starts it hidden in the tray at sign-in. The app holds Lerd's tray icon and notifications on Windows, keeps Lerd's agent running, and has no installer of its own. It comes before Lerd so that `wsl:setup` finds it and leaves the agent to it: started from a Run entry of its own, the unsigned agent reads to Windows Defender as malware making itself persistent, and Defender has quarantined it for that.
@@ -92,7 +92,7 @@ The installer only changes when one of the things it relies on does:
 | It relies on | Update it when |
 |---|---|
 | The package list in `InstallPackages` | `install.sh` starts requiring another package |
-| `Ubuntu-24.04` | a newer Ubuntu LTS should be the default |
+| `FallbackDistro` | a newer Ubuntu LTS is out, for when the WSL list cannot be read |
 | `https://lerd.sh/install.sh`, `lerd wsl:setup`, `lerd dns:disable`, `lerd node:unmanage`, `lerd uninstall --keep-data` | one of them moves or changes its meaning |
 | Lerd's root CA at mkcert's CAROOT, `~/.local/share/mkcert/rootCA.pem` unless `CAROOT` or `XDG_DATA_HOME` is set | Lerd moves it |
 | Lerd's Windows side: `%LOCALAPPDATA%\lerd`, the `lerd` Run key, the NRPT rule commented `lerd`, the `lerd-lan` Hyper-V firewall rule, the `sh.lerd.Lerd` toast app ID | Lerd changes how `wsl:setup` installs it, so uninstalling still cleans up |

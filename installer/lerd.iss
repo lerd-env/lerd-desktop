@@ -57,7 +57,7 @@ PrepareToInstallNeedsRestart=Windows needs a restart to finish enabling WSL. Set
 
 [CustomMessages]
 UserPageCaption=Linux user
-UserPageDescription=Lerd runs inside an Ubuntu 24.04 WSL distro, under its own Linux user.
+UserPageDescription=Lerd runs inside an Ubuntu WSL distro, under its own Linux user.
 UserPageSub=Choose a name and a password for that user. sudo asks for this password inside Linux.
 UserName=&Username:
 UserPassword=&Password:
@@ -148,7 +148,8 @@ Filename: "https://github.com/lerd-env/lerd"; Description: "{cm:OpenGitHub}"; Fl
 
 [Code]
 const
-  Distro = 'Ubuntu-24.04';
+  FallbackDistro = 'Ubuntu-26.04';
+  MinUbuntu = 2404;
   { lerd's installer asks sudo for its password, and Setup has no terminal to
     type it in, so the user gets passwordless sudo only while Setup runs. }
   SudoersDropIn = '/etc/sudoers.d/zz-lerd-setup';
@@ -160,6 +161,7 @@ const
   ToastAppID = 'sh.lerd.Lerd';
 
 var
+  Distro: String;
   UserPage: TInputQueryWizardPage;
   FeaturesOn: Boolean;
   LinuxUser: String;
@@ -429,23 +431,66 @@ begin
       Result := True;
 end;
 
-{ DistroOffered reports whether wsl.exe can install the distro. Old WSL reads a
-  legacy list with no versioned Ubuntu. A failed lookup counts as offered, so
-  the install itself reports the network error rather than a pointless update. }
-function DistroOffered: Boolean;
+{ NewestUbuntu returns the newest Ubuntu-NN.NN in a `wsl` list, or ''. Lerd needs
+  podman 4.5, which Ubuntu ships from 24.04 on, so anything older does not count. }
+function NewestUbuntu(const Lines: TArrayOfString): String;
+var
+  I, Version, Best: Integer;
+  Name: String;
+begin
+  Result := '';
+  Best := MinUbuntu - 1;
+  for I := 0 to GetArrayLength(Lines) - 1 do
+  begin
+    Name := Lines[I];
+    if Pos(' ', Name) > 0 then
+      Name := Copy(Name, 1, Pos(' ', Name) - 1);
+    if (Length(Name) <> 12) or (Copy(Name, 1, 7) <> 'Ubuntu-') or (Name[10] <> '.') then
+      Continue;
+    Version := StrToIntDef(Copy(Name, 8, 2) + Copy(Name, 11, 2), 0);
+    if Version > Best then
+    begin
+      Best := Version;
+      Result := Name;
+    end;
+  end;
+end;
+
+function InstalledUbuntu: String;
 var
   Lines: TArrayOfString;
-  I: Integer;
 begin
-  Result := CaptureLines(RealWSLExe, '--list --online', Lines) <> 0;
-  for I := 0 to GetArrayLength(Lines) - 1 do
-    if Pos(Distro + ' ', Lines[I]) = 1 then
-      Result := True;
+  Result := '';
+  if FileExists(RealWSLExe) and (CaptureLines(RealWSLExe, '-l -q', Lines) = 0) then
+    Result := NewestUbuntu(Lines);
+end;
+
+{ OfferedUbuntu is '' on a WSL too old to list a usable Ubuntu. A failed lookup
+  gives the fallback, so the install reports the network error itself. }
+function OfferedUbuntu: String;
+var
+  Lines: TArrayOfString;
+begin
+  if CaptureLines(RealWSLExe, '--list --online', Lines) = 0 then
+    Result := NewestUbuntu(Lines)
+  else
+    Result := FallbackDistro;
+end;
+
+{ PickDistro stays on an Ubuntu already here: a newer one on offer would otherwise
+  get a second, empty distro beside it. }
+procedure PickDistro;
+begin
+  Distro := InstalledUbuntu;
+  if Distro = '' then
+    Distro := OfferedUbuntu;
+  if Distro = '' then
+    Distro := FallbackDistro;
 end;
 
 function WSLReady: Boolean;
 begin
-  Result := WSLInstalled and (DistroInstalled or DistroOffered);
+  Result := WSLInstalled and ((InstalledUbuntu <> '') or (OfferedUbuntu <> ''));
 end;
 
 function MirroredSupported: Boolean;
@@ -526,6 +571,7 @@ end;
 function InitializeSetup: Boolean;
 begin
   SetEnvironmentVariable('WSL_UTF8', '1');
+  PickDistro;
   Result := True;
 end;
 
@@ -1148,6 +1194,7 @@ begin
   WizardForm.ProgressGauge.Max := 7;
   SetProgress(0);
   if not EnsureWSL then Exit;
+  PickDistro;
   SetProgress(1);
   if not EnsureDistro then Exit;
   SetProgress(2);
@@ -1214,6 +1261,7 @@ function InitializeUninstall: Boolean;
 begin
   Result := True;
   SetEnvironmentVariable('WSL_UTF8', '1');
+  PickDistro;
   if UninstallSilent or not DistroInstalled then
     Exit;
   case TaskDialogMsgBox(FmtMessage(CustomMessage('UninstallQuestion'), [Distro]),
