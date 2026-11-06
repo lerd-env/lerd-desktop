@@ -49,6 +49,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.4" date="2026-11-06">
+      <description>
+        <p>The Windows installer updates a WSL too old to offer Ubuntu 24.04, and warns on Windows versions without mirrored networking.</p>
+      </description>
+    </release>
     <release version="0.2.3" date="2026-10-31">
       <description>
         <p>When Lerd isn't installed, the start screen's button copies the install command to paste into a terminal.</p>
