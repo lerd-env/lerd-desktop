@@ -456,13 +456,39 @@ begin
   end;
 end;
 
-function InstalledUbuntu: String;
+{ WiredDistro is the distro Windows already runs Lerd from, per lerd-wsl.conf. }
+function WiredDistro: String;
 var
   Lines: TArrayOfString;
+  I: Integer;
 begin
   Result := '';
-  if FileExists(RealWSLExe) and (CaptureLines(RealWSLExe, '-l -q', Lines) = 0) then
-    Result := NewestUbuntu(Lines);
+  if not LoadStringsFromFile(ExpandConstant('{localappdata}\lerd\bin\lerd-wsl.conf'), Lines) then
+    Exit;
+  for I := 0 to GetArrayLength(Lines) - 1 do
+    if Pos('distro=', Lines[I]) = 1 then
+      Result := Trim(Copy(Lines[I], 8, Length(Lines[I])));
+end;
+
+{ InstalledDistro is the distro to stay on: the one Lerd runs from, or else the
+  newest usable Ubuntu. Moving to another would leave the user's sites behind. }
+function InstalledDistro: String;
+var
+  Lines: TArrayOfString;
+  Wired: String;
+  I: Integer;
+begin
+  Result := '';
+  if not FileExists(RealWSLExe) or (CaptureLines(RealWSLExe, '-l -q', Lines) <> 0) then
+    Exit;
+  Wired := WiredDistro;
+  for I := 0 to GetArrayLength(Lines) - 1 do
+    if CompareText(Lines[I], Wired) = 0 then
+    begin
+      Result := Wired;
+      Exit;
+    end;
+  Result := NewestUbuntu(Lines);
 end;
 
 { OfferedUbuntu is '' on a WSL too old to list a usable Ubuntu. A failed lookup
@@ -477,11 +503,11 @@ begin
     Result := FallbackDistro;
 end;
 
-{ PickDistro stays on an Ubuntu already here: a newer one on offer would otherwise
+{ PickDistro stays on a distro already here: a newer one on offer would otherwise
   get a second, empty distro beside it. }
 procedure PickDistro;
 begin
-  Distro := InstalledUbuntu;
+  Distro := InstalledDistro;
   if Distro = '' then
     Distro := OfferedUbuntu;
   if Distro = '' then
@@ -490,7 +516,7 @@ end;
 
 function WSLReady: Boolean;
 begin
-  Result := WSLInstalled and ((InstalledUbuntu <> '') or (OfferedUbuntu <> ''));
+  Result := WSLInstalled and ((InstalledDistro <> '') or (OfferedUbuntu <> ''));
 end;
 
 function MirroredSupported: Boolean;
