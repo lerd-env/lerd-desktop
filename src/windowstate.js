@@ -66,4 +66,16 @@ function write(file, state) {
   }
 }
 
-module.exports = { normalize, read, write, DEFAULT_WIDTH, DEFAULT_HEIGHT, MIN_WIDTH, MIN_HEIGHT }
+// asksForWindow reports whether a second launch wants the window. --hidden is the
+// start that only keeps the tray and agent running, as Setup does.
+function asksForWindow(argv) {
+  return !argv.includes('--hidden')
+}
+
+// maximizesNow reports whether to maximize on creation. Maximizing shows the
+// window, so a hidden start waits until something shows it.
+function maximizesNow(state, hidden) {
+  return Boolean(state.maximized) && !hidden
+}
+
+module.exports = { asksForWindow, maximizesNow, normalize, read, write, DEFAULT_WIDTH, DEFAULT_HEIGHT, MIN_WIDTH, MIN_HEIGHT }

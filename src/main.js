@@ -150,7 +150,8 @@ function createWindow() {
     },
   })
 
-  if (state.maximized) mainWindow.maximize()
+  if (windowstate.maximizesNow(state, START_HIDDEN)) mainWindow.maximize()
+  else if (state.maximized) mainWindow.once('show', () => mainWindow.maximize())
 
   mainWindow.on('resize', scheduleSave)
   mainWindow.on('move', scheduleSave)
@@ -378,7 +379,7 @@ if (!gotLock) {
   // A second launch (including a lerd:// click on Linux/Windows) focuses this
   // instance and follows the deep link if one is present in the new argv.
   app.on('second-instance', (_e, argv) => {
-    if (mainWindow) {
+    if (mainWindow && windowstate.asksForWindow(argv)) {
       mainWindow.show()
       mainWindow.focus()
     }

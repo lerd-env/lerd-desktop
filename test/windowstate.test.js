@@ -5,6 +5,8 @@ const assert = require('node:assert')
 const fs = require('node:fs')
 const path = require('node:path')
 const {
+  asksForWindow,
+  maximizesNow,
   normalize,
   read,
   write,
@@ -76,4 +78,24 @@ test('write then read round trips a frame', (t) => {
 
   assert.deepStrictEqual(read(file), frame)
   assert.deepStrictEqual(normalize(read(file), ONE_SCREEN), frame)
+})
+
+test('a plain second launch asks for the window', () => {
+  assert.strictEqual(asksForWindow(['lerd-desktop.exe']), true)
+})
+
+test('a hidden second launch leaves the window alone', () => {
+  assert.strictEqual(asksForWindow(['lerd-desktop.exe', '--hidden']), false)
+})
+
+test('a maximized window comes back maximized on a normal start', () => {
+  assert.strictEqual(maximizesNow({ maximized: true }, false), true)
+})
+
+test('a hidden start does not maximize, which would show the window', () => {
+  assert.strictEqual(maximizesNow({ maximized: true }, true), false)
+})
+
+test('a window closed at its normal size stays that way', () => {
+  assert.strictEqual(maximizesNow({ maximized: false }, false), false)
 })
