@@ -1,0 +1,23 @@
+version: 2
+
+# One grouped pull request per ecosystem a week keeps the noise down. Majors
+# stay out of the group and arrive one per pull request, since each can need
+# code changes and would otherwise hold back every safe bump with it.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
