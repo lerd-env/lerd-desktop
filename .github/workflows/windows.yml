@@ -21,6 +21,10 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+      # Keyless signing and the provenance attestation prove their origin with
+      # the workflow's OIDC token.
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
@@ -54,8 +58,43 @@ jobs:
           path: installer/dist/Install-Lerd.exe
           if-no-files-found: error
 
+      # Signed and attested on every push to main too, so a release is never the
+      # first run of it; pull requests skip it, since a fork gets no OIDC token.
+      - name: Gather the release files and their checksums
+        shell: bash
+        run: |
+          mkdir -p signed
+          cp dist/lerd-desktop-win32-x64.zip dist/lerd-desktop-win32-arm64.zip installer/dist/Install-Lerd.exe signed/
+          cd signed && sha256sum lerd-desktop-win32-x64.zip lerd-desktop-win32-arm64.zip Install-Lerd.exe > SHA256SUMS
+
+      - if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      - name: Sign the checksums and verify the signature
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          cosign sign-blob --yes --bundle signed/SHA256SUMS.sigstore.json signed/SHA256SUMS
+          cosign verify-blob signed/SHA256SUMS \
+            --bundle signed/SHA256SUMS.sigstore.json \
+            --certificate-identity-regexp '^https://github.com/lerd-env/lerd-desktop/\.github/workflows/windows\.yml@' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: Attest build provenance
+        id: attest
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: signed/SHA256SUMS
+
       - name: Attach to the release
         if: github.event_name == 'release'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/lerd-desktop-win32-x64.zip dist/lerd-desktop-win32-arm64.zip installer/dist/Install-Lerd.exe --clobber
+          TAG: ${{ github.event.release.tag_name }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          cp "$(cygpath -u "$BUNDLE")" "signed/lerd-desktop-${TAG}.intoto.jsonl"
+          gh release upload "$TAG" signed/lerd-desktop-win32-x64.zip signed/lerd-desktop-win32-arm64.zip signed/Install-Lerd.exe \
+            signed/SHA256SUMS signed/SHA256SUMS.sigstore.json "signed/lerd-desktop-${TAG}.intoto.jsonl" --clobber

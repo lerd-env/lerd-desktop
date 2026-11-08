@@ -102,6 +102,20 @@ it is not code-signed yet, so SmartScreen asks before the first run. What it doe
 step by step is in [installer/README.md](installer/README.md), and the
 [WSL2 guide](https://lerd.sh/getting-started/wsl2) covers the Lerd side.
 
+Each release also carries `SHA256SUMS`, signed by this repository's release
+workflow with no key anyone holds, and the build provenance of every file. That
+is not the Authenticode signature SmartScreen looks for, but it proves where a
+download came from. With [cosign](https://docs.sigstore.dev/cosign/system_config/installation/)
+or the GitHub CLI:
+
+```bash
+cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/lerd-env/lerd-desktop/\.github/workflows/windows\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+sha256sum --ignore-missing -c SHA256SUMS      # or in PowerShell: (Get-FileHash Install-Lerd.exe).Hash
+gh attestation verify Install-Lerd.exe --repo lerd-env/lerd-desktop
+```
+
 ### The window never shows up on Wayland
 
 Some hybrid Intel and NVIDIA laptops crash under a Wayland session before the
