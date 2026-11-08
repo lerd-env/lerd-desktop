@@ -49,13 +49,13 @@ modules:
         path: sh.lerd.Desktop.metainfo.xml
       - type: archive
         only-arches: [x86_64]
-        url: https://github.com/electron/electron/releases/download/v44.7.0/electron-v44.7.0-linux-x64.zip
-        sha256: 3ae7d5bdad61c664486c6ab61361dd084d064c8c08af8d13a687096e18ce555a
+        url: https://github.com/electron/electron/releases/download/v45.2.3/electron-v45.2.3-linux-x64.zip
+        sha256: a87fe741f6d121285117e574da6c9a2e65210d410123bbc04713b099add0263b
         dest: main/electron
         strip-components: 0
       - type: archive
         only-arches: [aarch64]
-        url: https://github.com/electron/electron/releases/download/v44.7.0/electron-v44.7.0-linux-arm64.zip
-        sha256: 9cd736d1f5873839553c3fa6c8c5e57635ec4a399cc2d32e79c82a02d9cd2258
+        url: https://github.com/electron/electron/releases/download/v45.2.3/electron-v45.2.3-linux-arm64.zip
+        sha256: 397c060fd9da99ab72b78787d65545b432fcadf13ef6c96658e4f525692aae0f
         dest: main/electron
         strip-components: 0

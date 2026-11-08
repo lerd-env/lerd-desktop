@@ -1,0 +1,10 @@
+# Advisories whose fix needs a major that the build tooling does not accept yet,
+# in code that never ships in the app.
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+reason = "minimatch 10 is pulled in by @electron/asar, whose latest release still requires it; it only matches lerd-desktop's own file globs while packaging and is not part of the app."
+
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+reason = "glob 13 is pulled in by @electron/asar, whose latest release still requires it; it only walks lerd-desktop's own source tree while packaging and never runs with an AbortSignal or in the app."
