@@ -110,7 +110,7 @@ or the GitHub CLI:
 
 ```bash
 cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json \
-  --certificate-identity-regexp '^https://github.com/lerd-env/lerd-desktop/\.github/workflows/windows\.yml@' \
+  --certificate-identity-regexp '^https://github.com/lerd-env/lerd-desktop/[.]github/workflows/windows[.]yml@' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 sha256sum --ignore-missing -c SHA256SUMS      # or in PowerShell: (Get-FileHash Install-Lerd.exe).Hash
 gh attestation verify Install-Lerd.exe --repo lerd-env/lerd-desktop

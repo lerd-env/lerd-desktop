@@ -77,7 +77,7 @@ jobs:
           cosign sign-blob --yes --bundle signed/SHA256SUMS.sigstore.json signed/SHA256SUMS
           cosign verify-blob signed/SHA256SUMS \
             --bundle signed/SHA256SUMS.sigstore.json \
-            --certificate-identity-regexp '^https://github.com/lerd-env/lerd-desktop/\.github/workflows/windows\.yml@' \
+            --certificate-identity-regexp '^https://github.com/lerd-env/lerd-desktop/[.]github/workflows/windows[.]yml@' \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
       - name: Attest build provenance
