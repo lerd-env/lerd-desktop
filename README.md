@@ -7,6 +7,7 @@
 > Your local PHP dev dashboard in a dedicated window, with native desktop
 > notifications. No browser tab to hunt for, no permission prompts.
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/lerd-env/lerd-desktop/badge)](https://scorecard.dev/viewer/?uri=github.com/lerd-env/lerd-desktop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)]()
 [![Flathub](https://img.shields.io/badge/Flathub-coming%20soon-4a90d9?logo=flathub&logoColor=white)](https://lerd.sh)

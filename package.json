@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
-    "electron": "^44.7.0",
+    "electron": "^45.2.3",
     "fast-check": "^4.10.2"
   }
 }
