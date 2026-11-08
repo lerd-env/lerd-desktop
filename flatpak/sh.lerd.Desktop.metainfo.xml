@@ -49,6 +49,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.6" date="2026-11-08">
+      <description>
+        <p>Runs on Electron 45, which carries the mitigation for the compromised eMudhra intermediate certificates. Windows downloads now come with a signed checksum list and build provenance, so you can check where they came from.</p>
+      </description>
+    </release>
     <release version="0.2.5" date="2026-11-07">
       <description>
         <p>The window stays hidden when the app starts in the tray, so the Windows installer no longer opens it before setup has finished.</p>
