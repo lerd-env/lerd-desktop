@@ -196,12 +196,13 @@ test('postAction sends the CSRF header and reads both kinds of answer', async ()
   assert.deepStrictEqual(await tray.postAction('stop', { port: 1 }), { status: 0, result: null })
 })
 
-test('tray icon follows lerd-tray: red when down, green on request, mono otherwise', () => {
-  assert.strictEqual(tray.trayIconFile({ running: false, darkTaskbar: true }), 'stopped.png')
-  assert.strictEqual(tray.trayIconFile({ running: null, highContrast: true }), 'stopped.png')
-  assert.strictEqual(tray.trayIconFile({ running: true, highContrast: true, darkTaskbar: true }), 'running-green.png')
+test('tray icon follows lerd-tray: matched to the taskbar, slashed when down, coloured on request', () => {
   assert.strictEqual(tray.trayIconFile({ running: true, darkTaskbar: true }), 'running-white.png')
   assert.strictEqual(tray.trayIconFile({ running: true, darkTaskbar: false }), 'running-dark.png')
+  assert.strictEqual(tray.trayIconFile({ running: false, darkTaskbar: true }), 'stopped-white.png')
+  assert.strictEqual(tray.trayIconFile({ running: null, darkTaskbar: false }), 'stopped-dark.png')
+  assert.strictEqual(tray.trayIconFile({ running: true, highContrast: true, darkTaskbar: true }), 'running-green.png')
+  assert.strictEqual(tray.trayIconFile({ running: null, highContrast: true }), 'stopped-red.png')
 })
 
 test('dotFile knows lerd\'s four states', () => {

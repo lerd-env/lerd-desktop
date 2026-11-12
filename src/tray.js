@@ -178,14 +178,14 @@ function notification({ status, result }) {
   return { title: result.title, body: result.body || '', silent: result.ok === true }
 }
 
-// trayIconFile picks the icon the way lerd-tray does on Linux: the red L while
-// lerd is stopped or unreachable, which reads on any taskbar, and while it runs
-// either the green L the high-contrast setting asks for or a monochrome L
-// against the taskbar's own colour. The files live in assets/tray.
+// trayIconFile picks the icon the way lerd-tray does on Linux: the Lerd containers
+// in the taskbar's own colour, slashed while lerd is stopped or unreachable,
+// and green running or red stopped when the high-contrast setting asks for
+// colour. The files live in assets/tray.
 function trayIconFile({ running, highContrast, darkTaskbar }) {
-  if (running !== true) return 'stopped.png'
-  if (highContrast) return 'running-green.png'
-  return darkTaskbar ? 'running-white.png' : 'running-dark.png'
+  const tone = darkTaskbar ? 'white' : 'dark'
+  if (running !== true) return highContrast ? 'stopped-red.png' : `stopped-${tone}.png`
+  return highContrast ? 'running-green.png' : `running-${tone}.png`
 }
 
 // dotFile is the menu icon for an item's state, null for one it does not know.
