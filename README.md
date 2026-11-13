@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/icon.svg" width="104" alt="Lerd Desktop" />
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/icon.svg"><img src="assets/icon-light.svg" width="104" alt="Lerd Desktop" /></picture>
 
 # Lerd Desktop
 

@@ -17,7 +17,6 @@ $branding = Join-Path $PSScriptRoot 'branding'
 $assets = Join-Path $PSScriptRoot 'assets'
 New-Item -ItemType Directory -Force $assets | Out-Null
 $logo = [System.Drawing.Image]::FromFile((Join-Path $branding 'icon-512.png'))
-$brand = [System.Drawing.Color]::FromArgb(255, 45, 32)
 
 function Resize([System.Drawing.Image]$img, [int]$w, [int]$h, [System.Drawing.Color]$bg, [double]$scale) {
     $bmp = New-Object System.Drawing.Bitmap $w, $h
@@ -65,7 +64,7 @@ foreach ($scale in 1.0, 1.25, 1.5, 2.0, 2.5) {
     $small = Resize $logo ([int](58 * $scale)) ([int](58 * $scale)) ([System.Drawing.Color]::White) 0.7
     $small.Save((Join-Path $assets "wizard-small-$i.bmp"), [System.Drawing.Imaging.ImageFormat]::Bmp)
     $small.Dispose()
-    $large = Resize $logo ([int](164 * $scale)) ([int](314 * $scale)) $brand 0.8
+    $large = Resize $logo ([int](164 * $scale)) ([int](314 * $scale)) ([System.Drawing.Color]::White) 0.8
     $large.Save((Join-Path $assets "wizard-$i.bmp"), [System.Drawing.Imaging.ImageFormat]::Bmp)
     $large.Dispose()
     $i++
