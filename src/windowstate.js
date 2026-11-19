@@ -78,4 +78,10 @@ function maximizesNow(state, hidden) {
   return Boolean(state.maximized) && !hidden
 }
 
-module.exports = { asksForWindow, maximizesNow, normalize, read, write, DEFAULT_WIDTH, DEFAULT_HEIGHT, MIN_WIDTH, MIN_HEIGHT }
+// pageToRestore is the dashboard page to load again when a hidden window shows,
+// or null when the window held something else and should start fresh.
+function pageToRestore(url) {
+  return /^http:\/\/(127\.0\.0\.1|localhost):7073\//.test(url) ? url : null
+}
+
+module.exports = { asksForWindow, maximizesNow, normalize, pageToRestore, read, write, DEFAULT_WIDTH, DEFAULT_HEIGHT, MIN_WIDTH, MIN_HEIGHT }

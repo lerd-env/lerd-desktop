@@ -70,6 +70,8 @@ const lerdScheme = protocolClient({
 if (lerdScheme) app.setAsDefaultProtocolClient(...lerdScheme)
 
 let mainWindow = null
+// pageOnShow is the dashboard page a window hidden to the tray goes back to.
+let pageOnShow = null
 let quitting = false
 
 // routeFromDeepLink turns lerd://open/<route> into the dashboard path/hash.
@@ -87,11 +89,12 @@ function firstDeepLink(argv) {
 // normalized to a hash; notification routes already carry the '#'.
 function handleDeepLink(url) {
   if (!mainWindow || !url) return
-  mainWindow.show()
-  mainWindow.focus()
   let route = routeFromDeepLink(url)
   if (route && !route.startsWith('#')) route = '#' + route
+  // Loaded before show, so showing a window from the tray keeps this page.
   mainWindow.loadURL('http://127.0.0.1:7073/' + route)
+  mainWindow.show()
+  mainWindow.focus()
 }
 
 // The frame sits with the rest of the app's state, so it follows the Flatpak's
@@ -165,6 +168,22 @@ function createWindow() {
       mainWindow.hide()
     }
   })
+  // A page left loaded in the tray keeps polling lerd as if someone watched it,
+  // and a window that starts hidden even reports itself visible to it. So the
+  // tray holds no page: it is unloaded on hide and brought back on show.
+  // Notifications are unaffected, they reach the app on its own socket.
+  if (IS_WINDOWS) {
+    mainWindow.on('hide', () => {
+      pageOnShow = windowstate.pageToRestore(mainWindow.webContents.getURL())
+      mainWindow.loadURL('about:blank')
+    })
+    mainWindow.on('show', () => {
+      const url = mainWindow.webContents.getURL()
+      if (url !== 'about:blank' && url !== '') return
+      if (pageOnShow) mainWindow.loadURL(pageOnShow)
+      else showDashboardOrGate()
+    })
+  }
   // Signing out or shutting down closes the window without passing through
   // before-quit; hiding it then would hold Windows up.
   mainWindow.on('session-end', () => {
@@ -379,12 +398,13 @@ if (!gotLock) {
   // A second launch (including a lerd:// click on Linux/Windows) focuses this
   // instance and follows the deep link if one is present in the new argv.
   app.on('second-instance', (_e, argv) => {
-    if (mainWindow && windowstate.asksForWindow(argv)) {
+    // A deep link shows the window itself, at its own page.
+    const dl = firstDeepLink(argv)
+    if (dl) handleDeepLink(dl)
+    else if (mainWindow && windowstate.asksForWindow(argv)) {
       mainWindow.show()
       mainWindow.focus()
     }
-    const dl = firstDeepLink(argv)
-    if (dl) handleDeepLink(dl)
   })
 
   // macOS delivers deep links here rather than via argv.
@@ -406,7 +426,7 @@ if (!gotLock) {
     }
     const coldDeepLink = firstDeepLink(process.argv)
     if (coldDeepLink) handleDeepLink(coldDeepLink)
-    else showDashboardOrGate()
+    else if (!START_HIDDEN) showDashboardOrGate()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

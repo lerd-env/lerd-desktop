@@ -8,6 +8,7 @@ const {
   asksForWindow,
   maximizesNow,
   normalize,
+  pageToRestore,
   read,
   write,
   DEFAULT_WIDTH,
@@ -98,4 +99,13 @@ test('a hidden start does not maximize, which would show the window', () => {
 
 test('a window closed at its normal size stays that way', () => {
   assert.strictEqual(maximizesNow({ maximized: false }, false), false)
+})
+
+test('pageToRestore keeps a dashboard page and drops anything else', () => {
+  assert.strictEqual(pageToRestore('http://127.0.0.1:7073/#/sites/demo'), 'http://127.0.0.1:7073/#/sites/demo')
+  assert.strictEqual(pageToRestore('http://localhost:7073/'), 'http://localhost:7073/')
+  assert.strictEqual(pageToRestore('about:blank'), null)
+  assert.strictEqual(pageToRestore(''), null)
+  assert.strictEqual(pageToRestore('file:///C:/Program%20Files/Lerd/desktop/resources/app.asar/gate/gate.html'), null)
+  assert.strictEqual(pageToRestore('https://lerd.sh/'), null)
 })
