@@ -17,6 +17,8 @@ finish-args:
   - --device=dri
   # Native notifications the embedded dashboard may raise on the browser sink.
   - --talk-name=org.freedesktop.Notifications
+  # Start lerd on the host from the "Lerd isn't running" page (flatpak-spawn).
+  - --talk-name=org.freedesktop.Flatpak
 
 modules:
   - name: lerd-desktop

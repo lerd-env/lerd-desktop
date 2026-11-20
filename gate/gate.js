@@ -22,6 +22,23 @@ installBtn.addEventListener('click', async () => {
 })
 document.getElementById('retry').addEventListener('click', check)
 
+// Linux starts lerd on the host itself; the poll below opens the dashboard.
+const startBtn = document.getElementById('start')
+if (window.lerd.platform === 'linux') {
+  startBtn.hidden = false
+  installBtn.classList.remove('primary')
+}
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true
+  startBtn.textContent = 'Starting lerd…'
+  statusEl.textContent = 'Starting lerd, this can take a minute.'
+  const failure = await window.lerd.start()
+  startBtn.disabled = false
+  startBtn.textContent = 'Start lerd'
+  statusEl.textContent = failure ? `Lerd did not start: ${failure}` : 'Lerd started. Loading dashboard…'
+  check()
+})
+
 // Poll until lerd comes online, then the main process swaps in the dashboard.
 setInterval(check, 2000)
 check()
