@@ -104,6 +104,9 @@ StepIntegration=Connecting Lerd with Windows...
 StepStart=Starting Lerd...
 StepNotify=Handing Lerd's notifications to the desktop app...
 StepApp=Installing the Lerd desktop app...
+ErrNoInstalledApp=The Lerd desktop app is not installed here; run Install-Lerd.exe without /apponly to set Lerd up.
+ErrChecksum=%1 does not match the release's SHA256SUMS, so it was not installed.
+ErrSwap=Could not replace %1; the app that was there is left as it was.
 ErrNoApp=No lerd-desktop-win32-%1.zip in the latest github.com/lerd-env/lerd-desktop release
 ErrExit=%1 failed (exit code %2)
 ErrWSLNotReady=WSL was installed but wsl.exe still does not report it
@@ -137,6 +140,8 @@ Name: "{userprograms}\Lerd"; Filename: "{app}\desktop\lerd-desktop.exe"; AppUser
 [UninstallDelete]
 Type: filesandordirs; Name: "{commonappdata}\Lerd"
 Type: filesandordirs; Name: "{app}\desktop"
+Type: filesandordirs; Name: "{app}\desktop.new"
+Type: filesandordirs; Name: "{app}\desktop.old"
 Type: files; Name: "{app}\desktop.version"
 
 [Run]
@@ -567,6 +572,19 @@ begin
       Result := True;
 end;
 
+{ AppOnly is the desktop app's own update: /apponly swaps the app for the newest
+  release and leaves WSL, the distro and lerd alone, the way flatpak update
+  leaves lerd alone on Linux. }
+function AppOnly: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/apponly') = 0 then
+      Result := True;
+end;
+
 { LinuxUsername derives a valid Linux login from a Windows user name, as
   winshim.LinuxUsername does for lerd.exe's own setup. }
 function LinuxUsername(const Windows: String): String;
@@ -679,11 +697,16 @@ end;
 
 procedure InitializeWizard;
 begin
-  FeaturesOn := WSLFeaturesEnabled;
-  if FeaturesOn and WSLInstalled and DistroInstalled then
+  { Every probe below asks wsl.exe, which can boot the distro; an app update
+    has no business there. }
+  if AppOnly then
+    FeaturesOn := True
+  else
+    FeaturesOn := WSLFeaturesEnabled;
+  if not AppOnly and FeaturesOn and WSLInstalled and DistroInstalled then
     LinuxUser := ExistingUser;
   UserExists := LinuxUser <> '';
-  LerdInstalled := UserExists and LerdInstalledFor(LinuxUser);
+  LerdInstalled := AppOnly or (UserExists and LerdInstalledFor(LinuxUser));
 
   UserPage := CreateInputQueryPage(wpLicense, CustomMessage('UserPageCaption'),
     CustomMessage('UserPageDescription'), CustomMessage('UserPageSub'));
@@ -730,6 +753,8 @@ begin
     Result := True;
   if (PageID = OptionsPage.ID) and (not FeaturesOn or LerdInstalled) then
     Result := True;
+  if AppOnly and ((PageID = UserPage.ID) or (PageID = OptionsPage.ID)) then
+    Result := True;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -737,7 +762,7 @@ var
   U: String;
 begin
   Result := True;
-  if CurPageID <> UserPage.ID then
+  if AppOnly or (CurPageID <> UserPage.ID) then
     Exit;
   U := Trim(UserPage.Values[0]);
   if not ValidUsername(U) then
@@ -1147,7 +1172,7 @@ end;
 function InstallDesktopApp: Boolean;
 var
   Lines: TArrayOfString;
-  Local, Zip, Tag: String;
+  Local, Zip, Tag, SumsUrl, Fresh, Old: String;
   Installed: AnsiString;
 begin
   Result := False;
@@ -1163,16 +1188,23 @@ begin
   end
   else
   begin
+    { releases/latest redirects to the newest tag, and the assets sit at fixed
+      names under it. That redirect is not GitHub's API, whose 60 calls an hour
+      a household or office behind one address can use up. }
     if not PowerShell('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; ' +
-      '$r = Invoke-RestMethod https://api.github.com/repos/lerd-env/lerd-desktop/releases/latest; ' +
-      '$a = $r.assets | Where-Object { $_.name -eq ''' + DesktopZipName + ''' } | Select-Object -First 1; ' +
-      'if ($a) { $r.tag_name; $a.browser_download_url }', Lines)
-      or (GetArrayLength(Lines) < 2) then
+      '$q = [Net.HttpWebRequest]::Create(''https://github.com/lerd-env/lerd-desktop/releases/latest''); ' +
+      '$q.Method = ''HEAD''; $q.AllowAutoRedirect = $false; ' +
+      '$r = $q.GetResponse(); $l = $r.Headers[''Location'']; $r.Close(); ' +
+      'if ($l -match ''/releases/tag/([^/?#]+)$'') { ' +
+      '$b = ''https://github.com/lerd-env/lerd-desktop/releases/download/'' + $Matches[1]; ' +
+      '$Matches[1]; $b + ''/' + DesktopZipName + '''; $b + ''/SHA256SUMS'' }', Lines)
+      or (GetArrayLength(Lines) < 3) then
     begin
       Failed := FmtMessage(CustomMessage('ErrNoApp'), [DesktopArch]);
       Exit;
     end;
     Tag := Lines[0];
+    SumsUrl := Lines[2];
     if FileExists(DesktopExe) and LoadStringFromFile(DesktopVersionFile, Installed) and (Trim(String(Installed)) = Tag) then
     begin
       AddDetail('The desktop app is already at ' + Tag);
@@ -1184,30 +1216,65 @@ begin
     DownloadName := 'the Lerd desktop app';
     try
       DownloadTemporaryFile(Lines[1], 'lerd-desktop.zip', '', @DownloadProgress);
+      DownloadTemporaryFile(SumsUrl, 'SHA256SUMS', '', @DownloadProgress);
     except
       Failed := GetExceptionMessage;
       Exit;
     end;
     WizardForm.FilenameLabel.Caption := '';
     Zip := ExpandConstant('{tmp}\lerd-desktop.zip');
+    { The release lists every asset's sha256; a zip that does not match it is
+      not unpacked, whatever the reason. }
+    if not PowerShell('$want = ((Get-Content ' + Quote(ExpandConstant('{tmp}\SHA256SUMS')) + ' | Where-Object { $_ -match ''\s\*?' + DesktopZipName + '$'' } | Select-Object -First 1) -split ''\s+'')[0]; ' +
+      '$got = (Get-FileHash -Algorithm SHA256 ' + Quote(Zip) + ').Hash; ' +
+      'if ($want -and ($got -ieq $want)) { ''ok'' } else { ''mismatch'' }', Lines)
+      or (GetArrayLength(Lines) < 1) or (Trim(Lines[0]) <> 'ok') then
+    begin
+      Failed := FmtMessage(CustomMessage('ErrChecksum'), [DesktopZipName]);
+      Exit;
+    end;
   end;
 
-  StopDesktopApp;
-  DelTree(DesktopDir, True, True, True);
-  DeleteFile(DesktopVersionFile);
-  ForceDirectories(DesktopDir);
+  { Unpacked beside the live app and swapped in by rename, so a failure at any
+    point leaves a working app rather than half of one. }
+  Fresh := DesktopDir + '.new';
+  Old := DesktopDir + '.old';
+  DelTree(Fresh, True, True, True);
+  ForceDirectories(Fresh);
   AddDetail('Unpacking the desktop app');
   { Windows' own tar unpacks zips. Its complaints go to the log and the details
     box, since a half-unpacked app opens to a black window. }
-  if not Run(CustomMessage('StepApp'), ExpandConstant('{sys}\tar.exe'), '-xf ' + Quote(Zip) + ' -C ' + Quote(DesktopDir)) then
-    Exit;
-  if not FileExists(DesktopExe) then
+  if not Run(CustomMessage('StepApp'), ExpandConstant('{sys}\tar.exe'), '-xf ' + Quote(Zip) + ' -C ' + Quote(Fresh)) then
   begin
+    DelTree(Fresh, True, True, True);
+    Exit;
+  end;
+  if not FileExists(Fresh + '\lerd-desktop.exe') then
+  begin
+    DelTree(Fresh, True, True, True);
     Failed := FmtMessage(CustomMessage('ErrExit'), [CustomMessage('StepApp'), '0']);
     Exit;
   end;
+  StopDesktopApp;
+  DelTree(Old, True, True, True);
+  if DirExists(DesktopDir) and not RenameFile(DesktopDir, Old) then
+  begin
+    DelTree(Fresh, True, True, True);
+    Failed := FmtMessage(CustomMessage('ErrSwap'), [DesktopDir]);
+    Exit;
+  end;
+  if not RenameFile(Fresh, DesktopDir) then
+  begin
+    RenameFile(Old, DesktopDir);
+    DelTree(Fresh, True, True, True);
+    Failed := FmtMessage(CustomMessage('ErrSwap'), [DesktopDir]);
+    Exit;
+  end;
+  DelTree(Old, True, True, True);
   if Tag <> '' then
-    SaveStringToFile(DesktopVersionFile, Tag, False);
+    SaveStringToFile(DesktopVersionFile, Tag, False)
+  else
+    DeleteFile(DesktopVersionFile);
   RegisterDesktopApp;
   Result := True;
 end;
@@ -1257,11 +1324,29 @@ begin
   SetProgress(7);
 end;
 
+{ UpdateDesktopApp is /apponly's whole job: the app, only where it is already
+  installed, then whichever copy is in place started again as the signed-in
+  user, so a failed swap never leaves the tray empty. }
+procedure UpdateDesktopApp;
+begin
+  if not FileExists(DesktopExe) then
+  begin
+    Failed := CustomMessage('ErrNoInstalledApp');
+    Exit;
+  end;
+  InstallDesktopApp;
+  if FileExists(DesktopExe) then
+    StartDesktopApp;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
-    InstallLerdStack;
+    if AppOnly then
+      UpdateDesktopApp
+    else
+      InstallLerdStack;
     if Failed <> '' then
     begin
       Log('Setup failed: ' + Failed);

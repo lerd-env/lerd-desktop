@@ -11,6 +11,7 @@ const windowstate = require('./windowstate')
 const { navigation, isDashboard } = require('./navigation')
 const { protocolClient } = require('./protocol')
 const tray = require('./tray')
+const updater = require('./updater')
 const notifications = require('./notifications')
 const agent = require('./agent')
 
@@ -19,6 +20,8 @@ const SAVE_DELAY_MS = 400
 const TRAY_POLL_MS = 30000
 // Pointing at the tray refreshes the menu, at most this often.
 const TRAY_HOVER_MS = 3000
+// A started update holds its tray item this long, past the UAC prompt.
+const UPDATE_RETRY_MS = 60000
 
 // On Windows the app lives in the tray: closing the window hides it so the
 // dashboard keeps delivering notifications, and it starts hidden at login,
@@ -311,7 +314,60 @@ function setupTray() {
         quitApp,
       })
       : tray.downMenu({ busy }, { openDashboard: showWindow, start: startLerd, quitApp })
+    // The update sits just above Quit Lerd Desktop, whichever menu is up.
+    if (update.available) template.splice(template.length - 1, 0, updateItem())
     icon.setContextMenu(Menu.buildFromTemplate(template))
+  }
+
+  // Lerd Desktop's own update. The installer's /apponly swaps the app and
+  // leaves lerd alone; it asks for UAC itself and closes this app once allowed,
+  // so a declined prompt leaves the app running and the item still offered.
+  const update = { file: path.join(app.getPath('userData'), 'update.json'), state: {}, available: null, starting: false }
+  try {
+    update.state = JSON.parse(fs.readFileSync(update.file, 'utf8')) || {}
+  } catch {
+    update.state = {}
+  }
+  const saveUpdate = () => fs.promises.writeFile(update.file, JSON.stringify(update.state)).catch(() => {})
+
+  const updateItem = () => ({
+    label: update.starting ? `Updating Lerd Desktop to ${update.available}…` : `Update Lerd Desktop to ${update.available}`,
+    enabled: !update.starting,
+    click: applyUpdate,
+  })
+
+  const applyUpdate = async () => {
+    if (!update.available || update.starting) return
+    update.starting = true
+    draw()
+    try {
+      const file = await updater.downloadInstaller(update.available, {
+        fetch, dir: app.getPath('temp'), writeFile: fs.promises.writeFile,
+      })
+      const child = spawn(file, updater.INSTALLER_ARGS, { detached: true, stdio: 'ignore' })
+      child.on('error', (err) => notify({ title: "Couldn't update Lerd Desktop", body: err.message, silent: false }))
+      child.unref()
+    } catch (err) {
+      notify({ title: "Couldn't update Lerd Desktop", body: err.message, silent: false })
+    }
+    // Long enough for the UAC prompt; past it the item can be clicked again.
+    setTimeout(() => {
+      update.starting = false
+      draw()
+    }, UPDATE_RETRY_MS)
+  }
+
+  const checkUpdate = async () => {
+    const fetched = await updater.checkLatest({ fetch })
+    if (fetched) update.state.latest = fetched
+    update.available = updater.known(update.state, fetched, app.getVersion())
+    if (updater.announce(update.state, update.available)) {
+      update.state.announced = update.available
+      // A click on a Windows toast never reaches the app, so it points at the tray.
+      notify({ title: `Lerd Desktop ${update.available} is available`, body: 'Update it from the tray menu. Lerd keeps running.', silent: true })
+    }
+    saveUpdate()
+    draw()
   }
 
   // Polls can overlap a slow one; only the latest read is drawn.
@@ -370,6 +426,11 @@ function setupTray() {
   })
   draw()
   refresh()
+  // A store updates the app everywhere else; on Windows the app does it.
+  if (app.isPackaged) {
+    setTimeout(checkUpdate, updater.FIRST_CHECK_MS)
+    setInterval(checkUpdate, updater.CHECK_EVERY_MS)
+  }
   setInterval(refresh, TRAY_POLL_MS)
 }
 
