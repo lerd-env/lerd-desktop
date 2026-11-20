@@ -23,6 +23,9 @@ flatpak run sh.lerd.Desktop
 `--share=network` lets the sandbox reach the lerd UI on the host loopback
 (`127.0.0.1:7073`), and the exported desktop entry registers the `lerd://`
 scheme so native-notification clicks focus the window.
+`--talk-name=org.freedesktop.Flatpak` lets the "Lerd isn't running" page run
+`lerd start` on the host through `flatpak-spawn --host`. The command is fixed
+in the main process, the page cannot pass it anything.
 
 ## Distribution before Flathub
 

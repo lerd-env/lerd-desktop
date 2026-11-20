@@ -6,6 +6,7 @@ const os = require('node:os')
 const fs = require('node:fs')
 const { app, BrowserWindow, Menu, Notification, Tray, nativeTheme, shell, ipcMain, session, screen, clipboard } = require('electron')
 const { installAction } = require('./install')
+const { startCommand } = require('./start')
 const { probe, dashboardURL } = require('./detect')
 const windowstate = require('./windowstate')
 const { navigation, isDashboard } = require('./navigation')
@@ -450,6 +451,14 @@ function wireIpc() {
     shell.openExternal(action.open)
     return 'opened'
   })
+  // Resolves '' once lerd started, else lerd's last line of output.
+  ipcMain.handle('lerd:start', () => new Promise((resolve) => {
+    if (process.platform !== 'linux') return resolve('Starting lerd from the app works on Linux only.')
+    const cmd = startCommand({ flatpak: Boolean(process.env.FLATPAK_ID) })
+    execFile(cmd.file, cmd.args, { cwd: os.homedir() }, (err, stdout, stderr) => {
+      resolve(err ? tray.lastLine(stderr) || tray.lastLine(stdout) || err.message : '')
+    })
+  }))
 }
 
 const gotLock = app.requestSingleInstanceLock()
