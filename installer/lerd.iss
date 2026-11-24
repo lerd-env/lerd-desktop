@@ -37,6 +37,8 @@ SetupIconFile=assets\lerd.ico
 WizardImageFile=assets\wizard-0.bmp,assets\wizard-1.bmp,assets\wizard-2.bmp,assets\wizard-3.bmp,assets\wizard-4.bmp
 WizardSmallImageFile=assets\wizard-small-0.bmp,assets\wizard-small-1.bmp,assets\wizard-small-2.bmp,assets\wizard-small-3.bmp,assets\wizard-small-4.bmp
 LicenseFile=assets\LICENSE.txt
+; An app update approved by another account adds no uninstaller of that account's.
+Uninstallable=not OtherAccount
 UninstallDisplayIcon={app}\lerd.ico
 UninstallDisplayName=Lerd
 OutputDir=dist
@@ -104,6 +106,8 @@ StepIntegration=Connecting Lerd with Windows...
 StepStart=Starting Lerd...
 StepNotify=Handing Lerd's notifications to the desktop app...
 StepApp=Installing the Lerd desktop app...
+OtherAccountText=Windows is running Setup as %1, not as the account you are signed in with. Lerd lives in one account's WSL, so it would be installed for %1.%n%nLerd's PowerShell installer runs as you and asks for administrator rights only where they are needed. Open it now?%n%nTo start it yourself, open PowerShell without administrator rights and run:%n%2
+OtherAccountElevated=This window has administrator rights. Open PowerShell from the Start menu, without them, and run:
 ErrNoInstalledApp=The Lerd desktop app is not installed here; run Install-Lerd.exe without /apponly to set Lerd up.
 ErrChecksum=%1 does not match the release's SHA256SUMS, so it was not installed.
 ErrSwap=Could not replace %1; the app that was there is left as it was.
@@ -135,7 +139,7 @@ Source: "branding\icon-512.png"; DestDir: "{app}"; DestName: "lerd.png"; Flags: 
 [Icons]
 ; The desktop app is downloaded later, in InstallDesktopApp. The app id ties
 ; the shortcut to the app's own windows and notifications.
-Name: "{userprograms}\Lerd"; Filename: "{app}\desktop\lerd-desktop.exe"; AppUserModelID: "sh.lerd.Lerd"
+Name: "{userprograms}\Lerd"; Filename: "{app}\desktop\lerd-desktop.exe"; AppUserModelID: "sh.lerd.Lerd"; Check: not OtherAccount
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{commonappdata}\Lerd"
@@ -180,6 +184,9 @@ var
   DetailMemo: TNewMemo;
   DetailsButton: TNewButton;
   DownloadName: String;
+  { Setup runs as someone other than the signed-in user: a standard user's UAC
+    prompt was answered with a separate administrator account. }
+  ForeignAccount: Boolean;
 
 function SetEnvironmentVariable(lpName, lpValue: String): BOOL;
   external 'SetEnvironmentVariableW@kernel32.dll stdcall';
@@ -623,9 +630,59 @@ end;
 
 { ---- wizard -------------------------------------------------------------- }
 
+function OtherAccount: Boolean;
+begin
+  Result := ForeignAccount;
+end;
+
+{ DetectForeignAccount compares Setup's account with the owner of this session's
+  desktop. With no desktop to ask, over SSH for one, it reports no difference. }
+function DetectForeignAccount: Boolean;
+var
+  Lines: TArrayOfString;
+begin
+  Result := PowerShell('$me = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value; ' +
+    '$s = (Get-Process -Id $PID).SessionId; ' +
+    '$o = @(Get-CimInstance Win32_Process -Filter (''Name=''''explorer.exe'''' AND SessionId='' + $s) | ' +
+    'ForEach-Object { (Invoke-CimMethod $_ -MethodName GetOwnerSid).Sid } | Where-Object { $_ }); ' +
+    'if ($o.Count -and ($o -notcontains $me)) { ''other'' }', Lines)
+    and (GetArrayLength(Lines) = 1) and (Lines[0] = 'other');
+end;
+
+{ HandOver offers install.ps1 to the signed-in user: it runs as them and elevates
+  only the machine-wide steps. After Run as administrator there is no original
+  user to go back to, so the window it opens checks before it installs. }
+procedure HandOver;
+var
+  Command, Script, Local: String;
+  Code: Integer;
+begin
+  Command := 'irm https://lerd.sh/install.ps1 | iex';
+  Log('Setup runs as ' + GetUserNameString + ', not as the signed-in user; nothing was installed');
+  if SuppressibleMsgBox(FmtMessage(CustomMessage('OtherAccountText'), [GetUserNameString, Command]),
+    mbConfirmation, MB_YESNO, IDNO) <> IDYES then
+    Exit;
+  Local := ExpandConstant('{param:local|}');
+  StringChangeEx(Local, '''', '''''', True);
+  Script := 'if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) ' +
+    '{ Write-Host ''' + CustomMessage('OtherAccountElevated') + '''; Write-Host ''' + Command + ''' } else { ';
+  if Local <> '' then
+    Script := Script + '$env:LERD_SETUP_LOCAL = ''' + Local + '''; ';
+  Script := Script + Command + ' }';
+  if not ExecAsOriginalUser(PowerShellExe, '-NoProfile -ExecutionPolicy Bypass -NoExit -Command ' + Quote(Script), '', SW_SHOWNORMAL, ewNoWait, Code) then
+    MsgBox(SysErrorMessage(Code), mbError, MB_OK);
+end;
+
 function InitializeSetup: Boolean;
 begin
   SetEnvironmentVariable('WSL_UTF8', '1');
+  ForeignAccount := DetectForeignAccount;
+  if ForeignAccount and not AppOnly then
+  begin
+    HandOver;
+    Result := False;
+    Exit;
+  end;
   PickDistro;
   Result := True;
 end;
@@ -1155,6 +1212,9 @@ procedure RegisterDesktopApp;
 var
   Exe, Key: String;
 begin
+  { Another account's update: the signed-in user's registration is in place. }
+  if OtherAccount then
+    Exit;
   Exe := '"' + DesktopExe + '"';
   Key := 'Software\Classes\AppUserModelId\' + ToastAppID;
   RegWriteStringValue(HKCU, Key, 'DisplayName', 'Lerd');
