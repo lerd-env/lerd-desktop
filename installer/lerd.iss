@@ -1367,6 +1367,8 @@ begin
 end;
 
 procedure InstallLerdStack;
+var
+  Started: Boolean;
 begin
   WizardForm.ProgressGauge.Min := 0;
   WizardForm.ProgressGauge.Max := 7;
@@ -1391,9 +1393,10 @@ begin
     RemoveSudoers;
   end;
   SetProgress(6);
-  if not StartLerd then Exit;
+  { StartLerd stops the app, so it comes back even when lerd does not. }
+  Started := StartLerd;
   StartDesktopApp;
-  SetProgress(7);
+  if Started then SetProgress(7);
 end;
 
 { UpdateDesktopApp is /apponly's whole job: the app, only where it is already
