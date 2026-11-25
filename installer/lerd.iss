@@ -1140,6 +1140,8 @@ begin
     and Run(CustomMessage('StepNotify'), WSLExe, AsUser('~/.local/bin/lerd notify target native'));
 end;
 
+procedure StopDesktopApp; forward;
+
 { StartLerd restarts WSL so mirrored networking and the resolver handover take
   effect, boots the distro again, and waits for the dashboard to answer. }
 function StartLerd: Boolean;
@@ -1147,9 +1149,19 @@ var
   Status: String;
 begin
   Status := CustomMessage('StepStart');
+  { wsl:setup has started the app, and shutting WSL down under its open dashboard
+    leaves Windows holding 7073 in TIME_WAIT for two minutes. }
+  StopDesktopApp;
   Result := Run(Status, WSLExe, '--shutdown') and Run(Status, WSLExe, '-d ' + Distro + ' --exec /bin/true');
   if not Result then
     Exit;
+  { A browser on the dashboard can still do the same. lerd-ui gives up after a few
+    quick tries, so it is started until it stays. }
+  Run(Status, WSLExe, AsUser('export XDG_RUNTIME_DIR=/run/user/$(id -u); for i in $(seq 90); do ' +
+    'systemctl --user is-active -q lerd-ui && exit 0; ' +
+    'if systemctl --user is-failed -q lerd-ui; then systemctl --user reset-failed lerd-ui; systemctl --user start --no-block lerd-ui; fi; ' +
+    'sleep 2; done; exit 0'));
+  Failed := '';
   Result := Run(Status, PowerShellExe, PSParams('for ($i = 0; $i -lt 90; $i++) { ' +
     'try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://127.0.0.1:7073/ | Out-Null; exit 0 } ' +
     'catch { if ($_.Exception.Response) { exit 0 }; Start-Sleep 2 } }; exit 1'));
@@ -1355,6 +1367,8 @@ begin
 end;
 
 procedure InstallLerdStack;
+var
+  Started: Boolean;
 begin
   WizardForm.ProgressGauge.Min := 0;
   WizardForm.ProgressGauge.Max := 7;
@@ -1379,9 +1393,10 @@ begin
     RemoveSudoers;
   end;
   SetProgress(6);
-  if not StartLerd then Exit;
+  { StartLerd stops the app, so it comes back even when lerd does not. }
+  Started := StartLerd;
   StartDesktopApp;
-  SetProgress(7);
+  if Started then SetProgress(7);
 end;
 
 { UpdateDesktopApp is /apponly's whole job: the app, only where it is already

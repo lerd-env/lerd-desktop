@@ -51,7 +51,7 @@ The installer is a bootstrapper: it prepares Windows and hands Lerd itself to `i
 7. **Lerd.** Runs `install.sh`.
 8. **Certificate.** Imports Lerd's root CA into the Windows user's store from Setup itself, so Windows' confirmation comes to the front. Declining only leaves a browser warning.
 9. **Windows integration**: `lerd wsl:setup`, which puts `lerd.exe` and its shims on PATH and, behind one administrator prompt, adds the DNS rule for the site TLD and the `lerd-lan` firewall rule that lets the local network reach LAN shares. Then `lerd notify target native`, since the desktop app only receives Lerd's notifications from the native sink.
-10. **Start.** Restarts WSL, waits for the dashboard, and starts the desktop app in the tray, which starts Lerd's agent. The finish page offers to open the app, ends with `install.sh`'s GitHub star note, and has an unticked option to open github.com/lerd-env/lerd.
+10. **Start.** Stops the desktop app, since shutting WSL down under its open dashboard keeps port 7073 taken in Windows for two minutes, restarts WSL, waits for the dashboard, and starts the desktop app in the tray, which starts Lerd's agent. The finish page offers to open the app, ends with `install.sh`'s GitHub star note, and has an unticked option to open github.com/lerd-env/lerd.
 
 Every Linux command runs under `setsid -w ... </dev/null`: Setup's hidden console still gives WSL a pty, and a question read from `/dev/tty` would wait forever. Detached, every question takes its default. The user has passwordless sudo (`/etc/sudoers.d/zz-lerd-setup`) only while steps 7 to 9 run.
 
