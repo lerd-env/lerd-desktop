@@ -55,6 +55,8 @@ The installer is a bootstrapper: it prepares Windows and hands Lerd itself to `i
 
 Every Linux command runs under `setsid -w ... </dev/null`: Setup's hidden console still gives WSL a pty, and a question read from `/dev/tty` would wait forever. Detached, every question takes its default. The user has passwordless sudo (`/etc/sudoers.d/zz-lerd-setup`) only while steps 7 to 9 run.
 
+Setup runs as the account that answered the UAC prompt. When that is not the account signed in, a standard user with a separate administrator account for instance, WSL, the shortcuts and the registry entries would all go to the administrator. Setup notices before it changes anything and offers to open `install.ps1` as the signed-in user instead. An `/apponly` update approved that way still swaps the app, and leaves the registration alone.
+
 The full log is in `%TEMP%\Setup Log *.txt`. Silent installs are not supported, since the Linux user's password comes from the wizard.
 
 `Install-Lerd.exe /apponly /VERYSILENT` is the desktop app's own update, and the one silent run Setup supports. Over an existing install it downloads the newest release's app, checks it against the release's `SHA256SUMS`, unpacks it beside the running one and swaps it in by rename, then starts it again as the signed-in user. It leaves WSL, the distro and Lerd alone, the way `flatpak update` does on Linux, and a failed swap leaves the app that was there in place. Lerd itself is updated with `lerd update`.
