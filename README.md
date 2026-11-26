@@ -121,9 +121,11 @@ gh attestation verify Install-Lerd.exe --repo lerd-env/lerd-desktop
 Download `Lerd-arm64.dmg` (Apple silicon) or `Lerd-x64.dmg` (Intel) from the
 [latest release](https://github.com/lerd-env/lerd-desktop/releases/latest), open
 it and drag Lerd to Applications. The app is signed with a Developer ID and
-notarized by Apple, so it opens with no Gatekeeper prompt. If Lerd itself is not
-installed yet, the app's Install button runs the installer in Terminal, where it
-can ask what it needs to.
+notarized by Apple, so it opens with no Gatekeeper prompt. The app takes the
+place of the Lerd launcher `lerd install` otherwise puts in `~/Applications`:
+when Lerd is not running it offers to start it, and if Lerd itself is not
+installed yet its Install button runs the installer in Terminal, where it can
+ask what it needs to. Lerd's installer offers to install the app for you.
 
 The app keeps itself up to date: it checks daily, downloads a new release in the
 background, and switches to it when you click the notice or the next time you
@@ -149,7 +151,7 @@ The app points a native window at the Lerd UI on `http://127.0.0.1:7073`. Loadin
 from the loopback origin means write actions pass Lerd's same-origin CSRF gate and
 the first-party dashboard is granted notification permission automatically. If
 Lerd isn't running yet, a gate screen polls until it comes online and offers to
-install it. External links open in your real browser; the window stays on the
+start it, on Linux and macOS, or to install it. External links open in your real browser; the window stays on the
 dashboard.
 
 On Windows and macOS the app raises Lerd's notifications itself: it listens on

@@ -22,9 +22,9 @@ installBtn.addEventListener('click', async () => {
 })
 document.getElementById('retry').addEventListener('click', check)
 
-// Linux starts lerd on the host itself; the poll below opens the dashboard.
+// Linux and macOS start lerd themselves; the poll below opens the dashboard.
 const startBtn = document.getElementById('start')
-if (window.lerd.platform === 'linux') {
+if (window.lerd.platform === 'linux' || window.lerd.platform === 'darwin') {
   startBtn.hidden = false
   installBtn.classList.remove('primary')
 }

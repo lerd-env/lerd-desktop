@@ -494,7 +494,7 @@ function wireIpc() {
   })
   // Resolves '' once lerd started, else lerd's last line of output.
   ipcMain.handle('lerd:start', () => new Promise((resolve) => {
-    if (process.platform !== 'linux') return resolve('Starting lerd from the app works on Linux only.')
+    if (process.platform === 'win32') return resolve('Starting lerd from the app works on Linux and macOS only.')
     const cmd = startCommand({ flatpak: Boolean(process.env.FLATPAK_ID) })
     execFile(cmd.file, cmd.args, { cwd: os.homedir() }, (err, stdout, stderr) => {
       resolve(err ? tray.lastLine(stderr) || tray.lastLine(stdout) || err.message : '')

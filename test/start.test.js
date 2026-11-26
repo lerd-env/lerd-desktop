@@ -18,7 +18,7 @@ test('a dev run starts lerd directly, there is no flatpak-spawn outside the sand
   assert.strictEqual(startCommand({ flatpak: false }).file, 'sh')
 })
 
-// The script only ever runs on Linux; Windows CI has no sh.
+// The script runs on Linux and macOS; Windows CI has no sh.
 const NO_SH = process.platform === 'win32' && 'no sh on Windows'
 
 // The host side of flatpak-spawn has a bare PATH without ~/.local/bin, where
