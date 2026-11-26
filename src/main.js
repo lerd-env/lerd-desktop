@@ -198,6 +198,13 @@ function createWindow() {
     quitting = true
   })
 
+  // With the window closed the app only raises notifications, and lerd's tray
+  // is where Lerd lives then, so it leaves the Dock until a window is back.
+  if (process.platform === 'darwin') {
+    app.dock.show()
+    mainWindow.on('closed', () => app.dock.hide())
+  }
+
   // Every page load drops injected CSS, so the strip goes back on each one.
   if (process.platform === 'darwin') {
     mainWindow.webContents.on('dom-ready', () => mainWindow.webContents.insertCSS(titlebar.STRIP_CSS))
@@ -537,7 +544,9 @@ if (!gotLock) {
     else if (!START_HIDDEN) showDashboardOrGate()
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      if (BrowserWindow.getAllWindows().length > 0) return
+      createWindow()
+      showDashboardOrGate()
     })
   })
 
