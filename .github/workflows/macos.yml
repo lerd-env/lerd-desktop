@@ -1,0 +1,131 @@
+name: Package for macOS
+
+# Packages the macOS app into Lerd-<arch>.dmg, and Lerd-darwin-<arch>.zip for the
+# app's own update. Every push and pull request keeps them as run artifacts; a
+# published release also gets them as assets. With the Developer ID secrets set
+# they are signed and notarized, otherwise signed ad hoc.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package
+    runs-on: macos-latest
+    permissions:
+      contents: write
+      # Keyless signing and the provenance attestation prove their origin with
+      # the workflow's OIDC token.
+      id-token: write
+      attestations: write
+    env:
+      MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      # An ad hoc build still opens behind a Gatekeeper prompt, which is fine for
+      # a pull request and never for what users download.
+      - name: Refuse to release unsigned
+        if: github.event_name == 'release' && env.MAC_CERT_P12 == ''
+        run: |
+          echo "::error::MAC_CERT_P12 is not set, a release DMG would be unsigned"
+          exit 1
+
+      # A throwaway keychain holds the Developer ID for this run only.
+      - name: Import the Developer ID and notary key
+        if: env.MAC_CERT_P12 != ''
+        env:
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          pass=$(uuidgen)
+          echo "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          echo "$APPLE_API_KEY_P8" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          security create-keychain -p "$pass" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$pass" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pass" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          {
+            echo "LERD_MAC_SIGN_IDENTITY=Developer ID Application"
+            echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8"
+            echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID"
+            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
+          } >> "$GITHUB_ENV"
+
+      - run: npm run package:mac
+
+      - name: Check Gatekeeper accepts the DMGs
+        if: env.MAC_CERT_P12 != ''
+        run: |
+          for f in dist/Lerd-x64.dmg dist/Lerd-arm64.dmg; do
+            xcrun stapler validate "$f"
+            spctl --assess --type open --context context:primary-signature -v "$f"
+          done
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lerd-desktop-darwin
+          path: |
+            dist/Lerd-*.dmg
+            dist/Lerd-darwin-*.zip
+          if-no-files-found: error
+
+      # Named apart from the Windows SHA256SUMS, which the Windows updater reads
+      # from the same release.
+      - name: Gather the release files and their checksums
+        run: |
+          mkdir -p signed
+          cp dist/Lerd-x64.dmg dist/Lerd-arm64.dmg dist/Lerd-darwin-x64.zip dist/Lerd-darwin-arm64.zip signed/
+          cd signed && shasum -a 256 Lerd-x64.dmg Lerd-arm64.dmg Lerd-darwin-x64.zip Lerd-darwin-arm64.zip > SHA256SUMS-macos
+
+      - if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+
+      - name: Sign the checksums and verify the signature
+        if: github.event_name != 'pull_request'
+        run: |
+          cosign sign-blob --yes --bundle signed/SHA256SUMS-macos.sigstore.json signed/SHA256SUMS-macos
+          cosign verify-blob signed/SHA256SUMS-macos \
+            --bundle signed/SHA256SUMS-macos.sigstore.json \
+            --certificate-identity-regexp '^https://github.com/lerd-env/lerd-desktop/[.]github/workflows/macos[.]yml@' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: Attest build provenance
+        id: attest
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: signed/SHA256SUMS-macos
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          cp "$BUNDLE" "signed/lerd-desktop-${TAG}-macos.intoto.jsonl"
+          gh release upload "$TAG" signed/Lerd-x64.dmg signed/Lerd-arm64.dmg signed/Lerd-darwin-x64.zip signed/Lerd-darwin-arm64.zip \
+            signed/SHA256SUMS-macos signed/SHA256SUMS-macos.sigstore.json "signed/lerd-desktop-${TAG}-macos.intoto.jsonl" --clobber
