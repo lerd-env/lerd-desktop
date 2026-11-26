@@ -13,6 +13,8 @@ const { navigation, isDashboard } = require('./navigation')
 const { protocolClient } = require('./protocol')
 const tray = require('./tray')
 const updater = require('./updater')
+const macupdater = require('./macupdater')
+const titlebar = require('./titlebar')
 const notifications = require('./notifications')
 const agent = require('./agent')
 
@@ -93,6 +95,7 @@ function firstDeepLink(argv) {
 // normalized to a hash; notification routes already carry the '#'.
 function handleDeepLink(url) {
   if (!mainWindow || !url) return
+  if (mainWindow.isDestroyed()) createWindow()
   let route = routeFromDeepLink(url)
   if (route && !route.startsWith('#')) route = '#' + route
   // Loaded before show, so showing a window from the tray keeps this page.
@@ -150,6 +153,7 @@ function createWindow() {
     show: !START_HIDDEN,
     backgroundColor: '#0b0f17',
     autoHideMenuBar: true,
+    ...titlebar.windowOptions(process.platform),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -194,6 +198,11 @@ function createWindow() {
     quitting = true
   })
 
+  // Every page load drops injected CSS, so the strip goes back on each one.
+  if (process.platform === 'darwin') {
+    mainWindow.webContents.on('dom-ready', () => mainWindow.webContents.insertCSS(titlebar.STRIP_CSS))
+  }
+
   // Keep the window titled "Lerd" rather than inheriting the dashboard's <title>.
   mainWindow.on('page-title-updated', (e) => e.preventDefault())
 
@@ -227,7 +236,14 @@ async function showDashboardOrGate() {
   }
 }
 
+// On macOS closing the window destroys it while the app runs on, so a
+// notification click brings up a new one.
 function showWindow() {
+  if (mainWindow.isDestroyed()) {
+    createWindow()
+    showDashboardOrGate()
+    return
+  }
   mainWindow.show()
   mainWindow.focus()
 }
@@ -253,7 +269,9 @@ const shownNotifications = []
 
 function notify(options, onClick = showWindow) {
   if (!Notification.isSupported()) return
-  const n = new Notification({ ...options, icon: path.join(__dirname, '..', 'assets', 'icon.png') })
+  // macOS shows the app's own icon already and draws a passed one again beside it.
+  const icon = process.platform === 'darwin' ? undefined : path.join(__dirname, '..', 'assets', 'icon.png')
+  const n = new Notification({ ...options, icon })
   n.on('click', onClick)
   n.show()
   shownNotifications.push(n)
@@ -268,6 +286,22 @@ function startAgent() {
     command: () => agent.agentCommand({ exists: fs.existsSync }),
     spawn: (file, args) => spawn(file, args, { windowsHide: true, stdio: 'ignore', cwd: os.homedir() }),
     log: (msg) => console.log(`[agent] ${msg}`),
+  })
+}
+
+// startMacUpdate keeps the macOS app current; a click on the ready notice
+// restarts into the new version, and leaving it applies it at the next quit.
+function startMacUpdate() {
+  const { autoUpdater } = require('electron')
+  macupdater.start({
+    autoUpdater,
+    arch: process.arch,
+    version: app.getVersion(),
+    log: (msg) => console.log(`[update] ${msg}`),
+    onReady: () => notify(
+      { title: 'A Lerd Desktop update is ready', body: 'Click to restart into it, or it applies the next time you quit.', silent: true },
+      () => autoUpdater.quitAndInstall(),
+    ),
   })
 }
 
@@ -493,6 +527,10 @@ if (!gotLock) {
       setupTray()
       listenForNotifications()
       startAgent()
+    } else if (process.platform === 'darwin') {
+      // lerd has no notifier of its own on macOS, so the app raises them.
+      listenForNotifications()
+      if (app.isPackaged) startMacUpdate()
     }
     const coldDeepLink = firstDeepLink(process.argv)
     if (coldDeepLink) handleDeepLink(coldDeepLink)

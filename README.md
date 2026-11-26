@@ -116,6 +116,21 @@ sha256sum --ignore-missing -c SHA256SUMS      # or in PowerShell: (Get-FileHash 
 gh attestation verify Install-Lerd.exe --repo lerd-env/lerd-desktop
 ```
 
+### macOS
+
+Download `Lerd-arm64.dmg` (Apple silicon) or `Lerd-x64.dmg` (Intel) from the
+[latest release](https://github.com/lerd-env/lerd-desktop/releases/latest), open
+it and drag Lerd to Applications. The app is signed with a Developer ID and
+notarized by Apple, so it opens with no Gatekeeper prompt. If Lerd itself is not
+installed yet, the app's Install button runs the installer in Terminal, where it
+can ask what it needs to.
+
+The app keeps itself up to date: it checks daily, downloads a new release in the
+background, and switches to it when you click the notice or the next time you
+quit. Lerd is updated separately, with `lerd update`. The release's
+`SHA256SUMS-macos` is signed the same way as the Windows `SHA256SUMS`, by
+`macos.yml` rather than `windows.yml`.
+
 ### The window never shows up on Wayland
 
 Some hybrid Intel and NVIDIA laptops crash under a Wayland session before the
@@ -137,15 +152,19 @@ Lerd isn't running yet, a gate screen polls until it comes online and offers to
 install it. External links open in your real browser; the window stays on the
 dashboard.
 
+On Windows and macOS the app raises Lerd's notifications itself: it listens on
+`/api/desktop/ws` and shows each one Lerd sends as a native notification, even
+with the window closed, and a click opens the dashboard at that notification's
+route. On macOS the window's title bar takes the dashboard's own colour.
+
 On Windows the app does a few more things, all of them only there:
 
 - **Tray.** It reads the menu Lerd serves at `/api/tray`, every 30 seconds, when
   the pointer reaches the icon and after each action, and posts clicks to
   `/api/tray/action`. Lerd builds the menu, so a Lerd update changes it with no
   app release.
-- **Notifications.** It listens on `/api/desktop/ws` and raises each notification
-  Lerd sends under the `sh.lerd.Lerd` app id. A click opens the dashboard at that
-  notification's route.
+- **Notifications** carry the `sh.lerd.Lerd` app id, so they share Lerd's name
+  and logo in Windows' notification settings.
 - **Lerd's agent.** It starts `lerd.exe --agent` and starts it again if it stops.
   The agent boots WSL at sign-in and answers `.test` lookups for Windows.
 - **Closing** hides the window to the tray. Quit Lerd stops Lerd and keeps the
@@ -166,8 +185,11 @@ Building the Flatpak locally (no root) is covered in
 `lerd-desktop-win32-x64.zip` and the arm64 one in `dist/`, and
 [`installer/README.md`](installer/README.md) builds `Install-Lerd.exe` around them.
 On macOS, `npm run package:mac` leaves `Lerd-x64.dmg` and `Lerd-arm64.dmg` in
-`dist/`. CI builds the Windows ones on every pull request, and a published release
-carries them.
+`dist/`, signed ad hoc. With `LERD_MAC_SIGN_IDENTITY` naming a Developer ID and
+`APPLE_API_KEY`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER` holding an App Store
+Connect key, they are signed and notarized instead. CI builds both platforms on
+every pull request, and a published release carries them, the macOS ones signed
+and notarized.
 
 ## License
 

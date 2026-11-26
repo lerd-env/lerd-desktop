@@ -2,10 +2,10 @@
 
 const { DEFAULT_HOST, DEFAULT_PORT } = require('./detect')
 
-// lerd's desktop notifications on Windows. lerd-ui decides what to raise (the
-// global toggle, the kind preferences, a focused window holding them back) and,
-// while this app listens on /api/desktop/ws, hands each one to it instead of
-// raising a PowerShell toast from inside WSL. The app raises it under lerd's
+// lerd's desktop notifications on Windows and macOS. lerd-ui decides what to
+// raise (the global toggle, the kind preferences, a focused window holding them
+// back) and, while this app listens on /api/desktop/ws, hands each one to it
+// instead of raising a PowerShell toast from inside WSL, or nothing on macOS. The app raises it under lerd's
 // app id and a click opens the dashboard at its route in this window.
 
 const RETRY_MIN_MS = 1000
