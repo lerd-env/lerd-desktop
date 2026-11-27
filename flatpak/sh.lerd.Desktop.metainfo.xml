@@ -49,6 +49,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.10" date="2026-11-27">
+      <description>
+        <p>On macOS the app is now signed and notarized, so it opens without a Gatekeeper warning, and it keeps itself up to date. It also raises Lerd's notifications and can start Lerd when it is not running.</p>
+      </description>
+    </release>
     <release version="0.2.9" date="2026-11-20">
       <description>
         <p>On Linux the page shown while Lerd is not running now has a Start lerd button, which starts Lerd on your machine and opens the dashboard once it answers. On Windows the app checks for its own updates and offers them in the tray, then installs the new version without touching Lerd.</p>
